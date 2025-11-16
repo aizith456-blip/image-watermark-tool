@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>图片批量加文字水印工具</title>
+    <title>图片批量加文字水印工具（高级版）</title>
     <style>
         body { font-family: sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; line-height: 1.6; }
         .container { max-width: 960px; margin: 20px auto; background-color: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
@@ -85,36 +85,32 @@
             border: 1px solid #ccc; background-color: #f0f0f0;
             max-width: 100%; height: auto; display: block; margin: 15px auto;
             border-radius: 5px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        .position-options {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-            gap: 10px; margin-top: 10px;
-        }
-        .position-options button {
-            padding: 10px; border: 1px solid #ddd; background-color: #f8f8f8;
-            cursor: pointer; border-radius: 5px; font-size: 0.9em;
-            transition: all 0.2s ease;
-        }
-        .position-options button:hover { background-color: #e9ecef; border-color: #bbb; }
-        .position-options button.active {
-            background-color: #007bff; color: white; border-color: #007bff;
-            box-shadow: 0 2px 5px rgba(0,123,255,0.3);
-        }
-        #processingStatus {
-            text-align: center; margin-top: 20px; font-weight: bold; color: #007bff;
-            min-height: 20px; /* 确保占位，避免布局跳动 */
+            cursor: grab; /* 拖动光标 */
         }
         /* Highlight for drag and drop */
         .file-upload-area.highlight {
             border-color: #28a745;
             background-color: #e2fcdc;
         }
+
+        .format-buttons { display: flex; gap: 10px; margin-bottom: 10px; }
+        .format-buttons button {
+            padding: 8px 12px; border: 1px solid #ccc; background-color: #f0f0f0;
+            cursor: pointer; border-radius: 5px; font-size: 1em;
+            transition: all 0.2s ease;
+        }
+        .format-buttons button:hover { background-color: #e0e0e0; }
+        .format-buttons button.active {
+            background-color: #007bff; color: white; border-color: #007bff;
+        }
+
+        .position-offset { display: flex; gap: 10px; margin-top: 10px; }
+        .position-offset input { width: 80px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>图片批量加文字水印工具</h1>
+        <h1>图片批量加文字水印工具（高级版）</h1>
 
         <div class="section">
             <h2>1. 选择图片</h2>
@@ -152,39 +148,62 @@
                 <input type="number" id="fontSize" value="30" min="10" max="200">
             </div>
             <div class="input-group">
-                <label for="fontColor">颜色:</label>
+                <label for="fontColor">文字颜色:</label>
                 <input type="color" id="fontColor" value="#000000">
             </div>
             <div class="input-group">
-                <label for="opacity">透明度: <span id="opacityValue">50%</span></label>
+                <label for="backgroundColor">背景颜色:</label>
+                <input type="color" id="backgroundColor" value="#000000">
+            </div>
+            <div class="input-group">
+                <label for="backgroundOpacity">背景透明度: <span id="backgroundOpacityValue">0%</span></label>
+                <input type="range" id="backgroundOpacity" min="0" max="1" step="0.05" value="0">
+            </div>
+            <div class="input-group">
+                <label for="opacity">文字透明度: <span id="opacityValue">50%</span></label>
                 <input type="range" id="opacity" min="0" max="1" step="0.05" value="0.5">
             </div>
             <div class="input-group">
-                <label>位置:</label>
-                <div class="position-options">
-                    <button type="button" data-pos="topLeft">左上</button>
-                    <button type="button" data-pos="topCenter">中上</button>
-                    <button type="button" data-pos="topRight">右上</button>
-                    <button type="button" data-pos="midLeft">左中</button>
-                    <button type="button" data-pos="center" class="active">居中</button>
-                    <button type="button" data-pos="midRight">右中</button>
-                    <button type="button" data-pos="bottomLeft">左下</button>
-                    <button type="button" data-pos="bottomCenter">中下</button>
-                    <button type="button" data-pos="bottomRight">右下</button>
-                    <button type="button" data-pos="tile">平铺</button>
+                <label>格式:</label>
+                <div class="format-buttons">
+                    <button type="button" id="boldBtn"><b>B</b></button>
+                    <button type="button" id="italicBtn"><i>I</i></button>
+                    <button type="button" id="underlineBtn"><u>U</u></button>
                 </div>
-                <input type="hidden" id="watermarkPosition" value="center">
             </div>
             <div class="input-group">
                 <label for="rotation">旋转角度 (度):</label>
                 <input type="number" id="rotation" value="0" min="-180" max="180">
             </div>
+            <div class="input-group">
+                <label>水印位置 (在预览区拖动或手动输入坐标):</label>
+                <div class="position-offset">
+                    X: <input type="number" id="watermarkX" value="50">
+                    Y: <input type="number" id="watermarkY" value="50">
+                </div>
+            </div>
+            <div class="input-group">
+                <label for="watermarkPresetPosition">预设位置:</label>
+                <select id="watermarkPresetPosition">
+                    <option value="custom">自定义 (拖动)</option>
+                    <option value="topLeft">左上</option>
+                    <option value="topCenter">中上</option>
+                    <option value="topRight">右上</option>
+                    <option value="midLeft">左中</option>
+                    <option value="center" selected>居中</option>
+                    <option value="midRight">右中</option>
+                    <option value="bottomLeft">左下</option>
+                    <option value="bottomCenter">中下</option>
+                    <option value="bottomRight">右下</option>
+                    <option value="tile">平铺</option>
+                </select>
+            </div>
         </div>
 
         <div class="section">
-            <h2>3. 预览效果</h2>
+            <h2>3. 预览效果 (可拖动水印)</h2>
             <canvas id="previewCanvas"></canvas>
-            <p style="text-align: center; color: #888; font-size: 0.9em;">(预览第一张图片的效果)</p>
+            <p style="text-align: center; color: #888; font-size: 0.9em;">(在画布上拖动水印以调整位置)</p>
         </div>
 
         <div class="section">
@@ -207,11 +226,18 @@
         const fontFamilyElem = document.getElementById('fontFamily');
         const fontSizeElem = document.getElementById('fontSize');
         const fontColorElem = document.getElementById('fontColor');
+        const backgroundColorElem = document.getElementById('backgroundColor');
+        const backgroundOpacityElem = document.getElementById('backgroundOpacity');
+        const backgroundOpacityValueElem = document.getElementById('backgroundOpacityValue');
         const opacityElem = document.getElementById('opacity');
         const opacityValueElem = document.getElementById('opacityValue');
-        const watermarkPositionElem = document.getElementById('watermarkPosition');
+        const boldBtn = document.getElementById('boldBtn');
+        const italicBtn = document.getElementById('italicBtn');
+        const underlineBtn = document.getElementById('underlineBtn');
         const rotationElem = document.getElementById('rotation');
-        const positionButtons = document.querySelectorAll('.position-options button');
+        const watermarkXElem = document.getElementById('watermarkX');
+        const watermarkYElem = document.getElementById('watermarkY');
+        const watermarkPresetPositionElem = document.getElementById('watermarkPresetPosition');
         const previewCanvas = document.getElementById('previewCanvas');
         const processBtn = document.getElementById('processBtn');
         const downloadAllBtn = document.getElementById('downloadAllBtn');
@@ -221,19 +247,26 @@
         let uploadedFiles = []; // 存储原始文件对象
         let processedImages = []; // 存储处理后的Blob对象
 
+        let isBold = false;
+        let isItalic = false;
+        let isUnderline = false; // 下划线实现会比较复杂，这里先做个开关
+
+        // 水印位置和拖动状态
+        let watermarkX = parseFloat(watermarkXElem.value); // 默认水印X坐标
+        let watermarkY = parseFloat(watermarkYElem.value); // 默认水印Y坐标
+        let isDragging = false;
+        let dragStartX, dragStartY; // 鼠标按下时的坐标
+        let watermarkOffset = { x: 0, y: 0 }; // 水印相对于鼠标按下时的偏移
+
         // --- 文件上传处理 ---
         function handleFiles(files) {
-            // 清空之前的图片
             uploadedFiles = [];
             imagePreviews.innerHTML = '';
             processedImages = [];
             downloadAllBtn.style.display = 'none';
             processingStatus.textContent = '';
 
-            // 将 FileList 转换为 Array
             const newFiles = Array.from(files);
-
-            // 过滤非图片文件
             newFiles.forEach(file => {
                 if (file.type.startsWith('image/')) {
                     uploadedFiles.push(file);
@@ -252,7 +285,6 @@
                 }
             });
 
-            // 如果有图片，更新预览
             if (uploadedFiles.length > 0) {
                 updatePreview();
             } else {
@@ -264,13 +296,11 @@
 
         fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
 
-        // 移除图片功能
         imagePreviews.addEventListener('click', (e) => {
             if (e.target.classList.contains('remove-btn')) {
                 const filenameToRemove = e.target.dataset.filename;
                 uploadedFiles = uploadedFiles.filter(file => file.name !== filenameToRemove);
                 e.target.closest('.image-item').remove();
-                // 重新更新预览，如果移除了当前预览图
                 if (uploadedFiles.length > 0) {
                     updatePreview();
                 } else {
@@ -283,8 +313,6 @@
             }
         });
 
-
-        // 拖拽上传
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
             dropArea.addEventListener(eventName, preventDefaults, false);
         });
@@ -310,10 +338,17 @@
                 text: watermarkTextElem.value,
                 fontFamily: fontFamilyElem.value,
                 fontSize: parseInt(fontSizeElem.value),
-                color: fontColorElem.value,
+                fontColor: fontColorElem.value,
+                backgroundColor: backgroundColorElem.value,
+                backgroundOpacity: parseFloat(backgroundOpacityElem.value),
                 opacity: parseFloat(opacityElem.value),
-                position: watermarkPositionElem.value,
-                rotation: parseInt(rotationElem.value)
+                isBold: isBold,
+                isItalic: isItalic,
+                isUnderline: isUnderline,
+                rotation: parseInt(rotationElem.value),
+                x: watermarkX,
+                y: watermarkY,
+                presetPosition: watermarkPresetPositionElem.value
             };
         }
 
@@ -321,22 +356,38 @@
             opacityValueElem.textContent = `${Math.round(parseFloat(opacityElem.value) * 100)}%`;
             updatePreview();
         }
+        function updateBackgroundOpacityValue() {
+            backgroundOpacityValueElem.textContent = `${Math.round(parseFloat(backgroundOpacityElem.value) * 100)}%`;
+            updatePreview();
+        }
         opacityElem.addEventListener('input', updateOpacityValue);
+        backgroundOpacityElem.addEventListener('input', updateBackgroundOpacityValue);
 
-        // 位置按钮点击事件
-        positionButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                positionButtons.forEach(btn => btn.classList.remove('active'));
-                button.classList.add('active');
-                watermarkPositionElem.value = button.dataset.pos;
-                updatePreview();
-            });
+        // 格式按钮
+        boldBtn.addEventListener('click', () => {
+            isBold = !isBold;
+            boldBtn.classList.toggle('active', isBold);
+            updatePreview();
+        });
+        italicBtn.addEventListener('click', () => {
+            isItalic = !isItalic;
+            italicBtn.classList.toggle('active', isItalic);
+            updatePreview();
+        });
+        underlineBtn.addEventListener('click', () => {
+            isUnderline = !isUnderline;
+            underlineBtn.classList.toggle('active', isUnderline);
+            updatePreview();
         });
 
         // 绑定所有配置项的change/input事件来更新预览
-        [watermarkTextElem, fontFamilyElem, fontSizeElem, fontColorElem, rotationElem].forEach(elem => {
+        [
+            watermarkTextElem, fontFamilyElem, fontSizeElem, fontColorElem,
+            backgroundColorElem, rotationElem, watermarkXElem, watermarkYElem,
+            watermarkPresetPositionElem
+        ].forEach(elem => {
             elem.addEventListener('input', updatePreview);
-            elem.addEventListener('change', updatePreview); // 针对select
+            elem.addEventListener('change', updatePreview);
         });
 
         async function updatePreview() {
@@ -369,64 +420,243 @@
             // 绘制原始图片
             targetCtx.drawImage(originalImage, 0, 0, targetCanvas.width, targetCanvas.height);
 
-            // 设置水印样式
-            targetCtx.font = `${options.fontSize}px ${options.fontFamily}`;
-            targetCtx.fillStyle = options.color;
+            // 构建字体样式字符串
+            let fontStyle = '';
+            if (options.isItalic) fontStyle += 'italic ';
+            if (options.isBold) fontStyle += 'bold ';
+            fontStyle += `${options.fontSize}px ${options.fontFamily}`;
+
+            targetCtx.font = fontStyle;
+            targetCtx.fillStyle = options.fontColor;
             targetCtx.globalAlpha = options.opacity;
-            // textBaseline 和 textAlign 在每次绘制前根据具体位置调整
+            targetCtx.textAlign = 'left'; // 默认左对齐，如果需要居中再改
+            targetCtx.textBaseline = 'top'; // 默认顶部基线
 
-            if (options.position === 'tile') {
-                const padding = options.fontSize * 1.5; // 平铺时的间距
-                const angleRad = options.rotation * Math.PI / 180;
+            let currentX = options.x;
+            let currentY = options.y;
 
-                // 为了计算文字宽度和高度，暂时设置textAlign和textBaseline
-                targetCtx.textAlign = 'left';
-                targetCtx.textBaseline = 'top';
+            // 根据预设位置调整初始坐标
+            if (options.presetPosition !== 'custom' && options.presetPosition !== 'tile') {
+                const padding = 20;
                 const textMetrics = targetCtx.measureText(options.text);
                 const textWidth = textMetrics.width;
                 const textHeight = options.fontSize; // 简单的文字高度估算
 
-                // 计算对角线长度，确保水印覆盖整个图片
+                switch (options.presetPosition) {
+                    case 'topLeft': currentX = padding; currentY = padding; targetCtx.textAlign = 'left'; targetCtx.textBaseline = 'top'; break;
+                    case 'topCenter': currentX = targetCanvas.width / 2; currentY = padding; targetCtx.textAlign = 'center'; targetCtx.textBaseline = 'top'; break;
+                    case 'topRight': currentX = targetCanvas.width - padding; currentY = padding; targetCtx.textAlign = 'right'; targetCtx.textBaseline = 'top'; break;
+                    case 'midLeft': currentX = padding; currentY = targetCanvas.height / 2; targetCtx.textAlign = 'left'; targetCtx.textBaseline = 'middle'; break;
+                    case 'center': currentX = targetCanvas.width / 2; currentY = targetCanvas.height / 2; targetCtx.textAlign = 'center'; targetCtx.textBaseline = 'middle'; break;
+                    case 'midRight': currentX = targetCanvas.width - padding; currentY = targetCanvas.height / 2; targetCtx.textAlign = 'right'; targetCtx.textBaseline = 'middle'; break;
+                    case 'bottomLeft': currentX = padding; currentY = targetCanvas.height - padding; targetCtx.textAlign = 'left'; targetCtx.textBaseline = 'bottom'; break;
+                    case 'bottomCenter': currentX = targetCanvas.width / 2; currentY = targetCanvas.height - padding; targetCtx.textAlign = 'center'; targetCtx.textBaseline = 'bottom'; break;
+                    case 'bottomRight': currentX = targetCanvas.width - padding; currentY = targetCanvas.height - padding; targetCtx.textAlign = 'right'; targetCtx.textBaseline = 'bottom'; break;
+                }
+                // 更新UI上的坐标
+                watermarkXElem.value = currentX.toFixed(0);
+                watermarkYElem.value = currentY.toFixed(0);
+                watermarkX = currentX; // 确保内部变量也更新
+                watermarkY = currentY;
+            }
+
+            if (options.presetPosition === 'tile') {
+                const padding = options.fontSize * 1.5;
+                const angleRad = options.rotation * Math.PI / 180;
+
+                targetCtx.textAlign = 'left';
+                targetCtx.textBaseline = 'top';
+                const textMetrics = targetCtx.measureText(options.text);
+                const textWidth = textMetrics.width;
+                const textHeight = options.fontSize;
+
                 const diagonal = Math.sqrt(Math.pow(targetCanvas.width, 2) + Math.pow(targetCanvas.height, 2));
 
                 targetCtx.save();
-                // 移动到画布中心，然后旋转整个画布
                 targetCtx.translate(targetCanvas.width / 2, targetCanvas.height / 2);
                 targetCtx.rotate(angleRad);
-                targetCtx.translate(-targetCanvas.width / 2, -targetCanvas.height / 2); // 移回原点进行绘制
+                targetCtx.translate(-targetCanvas.width / 2, -targetCanvas.height / 2);
 
-                // 确保水印在旋转后也能覆盖整个图片，从负坐标开始绘制
                 for (let y = -diagonal / 2; y < diagonal / 2 + textHeight; y += textHeight + padding) {
                     for (let x = -diagonal / 2; x < diagonal / 2 + textWidth; x += textWidth + padding) {
+                        // 绘制背景
+                        if (options.backgroundOpacity > 0) {
+                            targetCtx.save();
+                            targetCtx.globalAlpha = options.backgroundOpacity;
+                            targetCtx.fillStyle = options.backgroundColor;
+                            targetCtx.fillRect(x, y, textWidth, textHeight); // 简单的背景矩形
+                            targetCtx.restore();
+                        }
                         targetCtx.fillText(options.text, x, y);
+                        // 绘制下划线
+                        if (options.isUnderline) {
+                            drawUnderline(targetCtx, options.text, x, y, textMetrics.width, options.fontSize);
+                        }
                     }
                 }
                 targetCtx.restore();
 
             } else {
-                let x, y;
-                const padding = 20; // 边距
+                targetCtx.save();
+                targetCtx.translate(currentX, currentY);
+                targetCtx.rotate(options.rotation * Math.PI / 180);
 
-                switch (options.position) {
-                    case 'topLeft': x = padding; y = padding; targetCtx.textAlign = 'left'; targetCtx.textBaseline = 'top'; break;
-                    case 'topCenter': x = targetCanvas.width / 2; y = padding; targetCtx.textAlign = 'center'; targetCtx.textBaseline = 'top'; break;
-                    case 'topRight': x = targetCanvas.width - padding; y = padding; targetCtx.textAlign = 'right'; targetCtx.textBaseline = 'top'; break;
-                    case 'midLeft': x = padding; y = targetCanvas.height / 2; targetCtx.textAlign = 'left'; targetCtx.textBaseline = 'middle'; break;
-                    case 'center': x = targetCanvas.width / 2; y = targetCanvas.height / 2; targetCtx.textAlign = 'center'; targetCtx.textBaseline = 'middle'; break;
-                    case 'midRight': x = targetCanvas.width - padding; y = targetCanvas.height / 2; targetCtx.textAlign = 'right'; targetCtx.textBaseline = 'middle'; break;
-                    case 'bottomLeft': x = padding; y = targetCanvas.height - padding; targetCtx.textAlign = 'left'; targetCtx.textBaseline = 'bottom'; break;
-                    case 'bottomCenter': x = targetCanvas.width / 2; y = targetCanvas.height - padding; targetCtx.textAlign = 'center'; targetCtx.textBaseline = 'bottom'; break;
-                    case 'bottomRight': x = targetCanvas.width - padding; y = targetCanvas.height - padding; targetCtx.textAlign = 'right'; targetCtx.textBaseline = 'bottom'; break;
+                // 获取文字尺寸用于背景
+                const textMetrics = targetCtx.measureText(options.text);
+                const textWidth = textMetrics.width;
+                const textHeight = options.fontSize; // 简单的文字高度估算
+
+                let bgX = 0, bgY = 0; // 背景矩形的起始点
+                // 根据 textBaseline 和 textAlign 调整背景位置
+                if (targetCtx.textAlign === 'center') bgX = -textWidth / 2;
+                if (targetCtx.textAlign === 'right') bgX = -textWidth;
+
+                if (targetCtx.textBaseline === 'middle') bgY = -textHeight / 2;
+                if (targetCtx.textBaseline === 'bottom') bgY = -textHeight;
+                // top is default 0,0
+
+                // 绘制背景
+                if (options.backgroundOpacity > 0) {
+                    targetCtx.save();
+                    targetCtx.globalAlpha = options.backgroundOpacity;
+                    targetCtx.fillStyle = options.backgroundColor;
+                    targetCtx.fillRect(bgX, bgY, textWidth, textHeight);
+                    targetCtx.restore();
                 }
 
-                targetCtx.save();
-                targetCtx.translate(x, y);
-                targetCtx.rotate(options.rotation * Math.PI / 180);
                 targetCtx.fillText(options.text, 0, 0);
+
+                // 绘制下划线
+                if (options.isUnderline) {
+                    drawUnderline(targetCtx, options.text, 0, 0, textMetrics.width, options.fontSize, targetCtx.textAlign, targetCtx.textBaseline);
+                }
+
                 targetCtx.restore();
             }
             targetCtx.globalAlpha = 1; // 恢复透明度
         }
+
+        // 绘制下划线辅助函数
+        function drawUnderline(ctx, text, x, y, textWidth, fontSize, textAlign = 'left', textBaseline = 'top') {
+            ctx.save();
+            ctx.strokeStyle = ctx.fillStyle; // 使用文字颜色作为下划线颜色
+            ctx.lineWidth = Math.max(1, fontSize / 20); // 根据字号调整下划线粗细
+            ctx.globalAlpha = ctx.globalAlpha; // 继承文字透明度
+
+            let startX = x;
+            let startY = y;
+
+            // 根据对齐方式调整下划线起始点
+            if (textAlign === 'center') startX = x - textWidth / 2;
+            if (textAlign === 'right') startX = x - textWidth;
+
+            // 根据基线调整下划线Y位置
+            if (textBaseline === 'top') startY = y + fontSize * 1.1; // 略低于文字
+            if (textBaseline === 'middle') startY = y + fontSize * 0.6;
+            if (textBaseline === 'bottom') startY = y + fontSize * 0.1; // 略高于文字底部
+
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(startX + textWidth, startY);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // --- Canvas 拖动逻辑 ---
+        previewCanvas.addEventListener('mousedown', (e) => {
+            if (uploadedFiles.length === 0 || watermarkPresetPositionElem.value === 'tile') return; // 平铺模式不拖动
+
+            const rect = previewCanvas.getBoundingClientRect();
+            const scaleX = previewCanvas.width / rect.width;    // 实际像素 / 显示像素
+            const scaleY = previewCanvas.height / rect.height;
+
+            const mouseX = (e.clientX - rect.left) * scaleX;
+            const mouseY = (e.clientY - rect.top) * scaleY;
+
+            // 检查鼠标是否在水印文字区域内
+            // 需要重新计算水印的实际绘制区域，这在旋转时会比较复杂
+            // 简单起见，这里先检查一个大致的矩形区域
+            const options = getWatermarkOptions();
+            const tempCtx = document.createElement('canvas').getContext('2d');
+            let fontStyle = '';
+            if (options.isItalic) fontStyle += 'italic ';
+            if (options.isBold) fontStyle += 'bold ';
+            fontStyle += `${options.fontSize}px ${options.fontFamily}`;
+            tempCtx.font = fontStyle;
+            const textMetrics = tempCtx.measureText(options.text);
+            const textWidth = textMetrics.width;
+            const textHeight = options.fontSize;
+
+            // 获取水印在Canvas上的实际绘制坐标 (考虑textAlign/textBaseline)
+            let drawX = watermarkX;
+            let drawY = watermarkY;
+
+            // 假设 textBaseline 是 'top'，textAlign 是 'left'
+            // 如果要精确判断，需要考虑旋转和基线对齐
+            let textLeft = drawX;
+            let textTop = drawY;
+
+            // 这是一个简化判断，没有考虑旋转和精确的 textBaseline/textAlign
+            // 实际应用中，需要更复杂的碰撞检测，尤其是旋转后
+            if (mouseX >= textLeft && mouseX <= textLeft + textWidth &&
+                mouseY >= textTop && mouseY <= textTop + textHeight) {
+                isDragging = true;
+                dragStartX = mouseX;
+                dragStartY = mouseY;
+                watermarkOffset.x = mouseX - watermarkX;
+                watermarkOffset.y = mouseY - watermarkY;
+                previewCanvas.style.cursor = 'grabbing';
+            }
+        });
+
+        previewCanvas.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+
+            const rect = previewCanvas.getBoundingClientRect();
+            const scaleX = previewCanvas.width / rect.width;
+            const scaleY = previewCanvas.height / rect.height;
+
+            const mouseX = (e.clientX - rect.left) * scaleX;
+            const mouseY = (e.clientY - rect.top) * scaleY;
+
+            watermarkX = mouseX - watermarkOffset.x;
+            watermarkY = mouseY - watermarkOffset.y;
+
+            // 更新UI上的坐标
+            watermarkXElem.value = watermarkX.toFixed(0);
+            watermarkYElem.value = watermarkY.toFixed(0);
+            watermarkPresetPositionElem.value = 'custom'; // 拖动后设置为自定义
+
+            updatePreview();
+        });
+
+        previewCanvas.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                previewCanvas.style.cursor = 'grab';
+            }
+        });
+
+        previewCanvas.addEventListener('mouseleave', () => {
+            // 如果鼠标拖出画布区域，也停止拖动
+            if (isDragging) {
+                isDragging = false;
+                previewCanvas.style.cursor = 'grab';
+            }
+        });
+
+        // 手动输入坐标时更新水印位置
+        watermarkXElem.addEventListener('input', () => {
+            watermarkX = parseFloat(watermarkXElem.value);
+            watermarkPresetPositionElem.value = 'custom';
+            updatePreview();
+        });
+        watermarkYElem.addEventListener('input', () => {
+            watermarkY = parseFloat(watermarkYElem.value);
+            watermarkPresetPositionElem.value = 'custom';
+            updatePreview();
+        });
+
 
         // --- 批量处理逻辑 ---
         processBtn.addEventListener('click', async () => {
@@ -451,7 +681,6 @@
                     const img = new Image();
                     img.onload = () => {
                         applyWatermarkToCanvas(img, watermarkOptions, tempCanvas);
-                        // 获取原始文件扩展名，用于命名和MIME类型
                         const originalExt = file.name.split('.').pop().toLowerCase();
                         const mimeType = originalExt === 'png' ? 'image/png' : 'image/jpeg';
                         const quality = originalExt === 'jpeg' || originalExt === 'jpg' ? 0.9 : 1.0;
@@ -464,9 +693,9 @@
                     img.onerror = (error) => {
                         console.error(`Error loading image ${file.name}:`, error);
                         processingStatus.textContent = `加载图片 ${file.name} 失败，跳过。`;
-                        resolve(); // 即使加载失败也要继续处理下一张
+                        resolve();
                     };
-                    img.src = URL.createObjectURL(file); // 使用URL.createObjectURL更高效
+                    img.src = URL.createObjectURL(file);
                 });
             }
 
@@ -507,7 +736,8 @@
 
         // 初始化预览
         updateOpacityValue();
-        updatePreview(); // 首次加载时也进行一次预览
+        updateBackgroundOpacityValue();
+        updatePreview();
     </script>
 </body>
 </html>
