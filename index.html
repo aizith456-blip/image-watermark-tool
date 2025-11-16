@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>图片批量加文字水印工具（高级版 V2）</title>
+    <title>图片批量加文字水印工具（高级版 V4）</title>
     <style>
         body { font-family: sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; line-height: 1.6; }
         .container { max-width: 960px; margin: 20px auto; background-color: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
@@ -11,14 +11,15 @@
         h1 { font-size: 2.5em; }
         h2 { font-size: 1.8em; color: #555; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-top: 30px; }
         .section { margin-bottom: 30px; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px; background-color: #fdfdfd; }
-        .input-group { margin-bottom: 15px; }
-        .input-group label { display: block; margin-bottom: 8px; font-weight: bold; color: #444; }
+        .input-group { margin-bottom: 15px; display: flex; align-items: center; gap: 10px;}
+        .input-group.stack { flex-direction: column; align-items: flex-start; }
+        .input-group label { margin-bottom: 0; font-weight: bold; color: #444; white-space: nowrap; }
         .input-group input[type="text"],
         .input-group input[type="number"],
         .input-group input[type="color"],
         .input-group select {
             width: calc(100% - 22px);
-            padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 5px;
+            padding: 10px; margin-bottom: 0px; border: 1px solid #ccc; border-radius: 5px;
             box-sizing: border-box;
             font-size: 1em;
         }
@@ -165,36 +166,43 @@
         .action-buttons button.clear-watermarks { background-color: #ffc107; color: #333; }
         .action-buttons button.clear-watermarks:hover { background-color: #e0a800; }
 
-        #duplicateCheck {
+        .warning-message {
+            color: #dc3545;
+            font-size: 0.9em;
             margin-top: 10px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            padding: 10px;
+            border: 1px solid #dc3545;
+            background-color: #f8d7da;
+            border-radius: 5px;
+            text-align: center;
         }
-        #duplicateCheck input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
+        .processing-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background-color: #fdfdfd;
+            margin-top: 15px;
+        }
+        .processing-options .input-group {
+            margin-bottom: 0;
         }
     </style>
     <!-- 引入 JSZip 和 FileSaver -->
     <script src="https://unpkg.com/file-saver@2.0.5/dist/FileSaver.min.js"></script>
     <script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
-    <!-- 引入 SparkMD5 用于文件哈希 -->
-    <script src="https://unpkg.com/spark-md5@3.0.2/spark-md5.min.js"></script>
 </head>
 <body>
     <div class="container">
-        <h1>图片批量加文字水印工具（高级版 V2）</h1>
+        <h1>图片批量加文字水印工具（高级版 V4）</h1>
 
         <div class="section">
             <h2>1. 选择图片</h2>
             <div class="file-upload-area" id="dropArea">
                 <p>拖拽图片到这里或 <label for="fileInput">点击选择文件</label></p>
                 <input type="file" id="fileInput" multiple accept="image/*" style="display: none;">
-            </div>
-            <div id="duplicateCheck">
-                <input type="checkbox" id="enableDuplicateCheck" checked>
-                <label for="enableDuplicateCheck">启用图片去重 (基于文件内容)</label>
             </div>
             <div id="imagePreviews">
                 <!-- 图片预览将在这里显示 -->
@@ -208,10 +216,47 @@
                 <button class="clear-watermarks" id="clearAllWatermarksBtn">清除所有水印</button>
             </div>
 
-            <div class="input-group">
-                <input type="checkbox" id="cropToRedBookRatio">
-                <label for="cropToRedBookRatio">裁剪为小红书主图比例 (3:4)</label>
+            <div class="processing-options">
+                <h3>图片通用处理选项</h3>
+                <div class="input-group stack">
+                    <div class="input-group">
+                        <input type="checkbox" id="resizeToRedBookRatio">
+                        <label for="resizeToRedBookRatio">调整为小红书主图比例 (3:4)</label>
+                    </div>
+                    <div class="input-group" id="redBookBgColorGroup" style="display: none;">
+                        <label for="redBookBgColorSelect">背景颜色:</label>
+                        <select id="redBookBgColorSelect">
+                            <option value="white">白色</option>
+                            <option value="black">黑色</option>
+                            <option value="transparent">透明</option>
+                            <option value="custom">自定义颜色</option>
+                        </select>
+                        <input type="color" id="redBookCustomBgColor" value="#ffffff" style="display: none;">
+                    </div>
+                </div>
+
+                <div class="input-group stack">
+                    <div class="input-group">
+                        <input type="checkbox" id="enableImageTweak">
+                        <label for="enableImageTweak">启用图片微调 (增加原创度)</label>
+                    </div>
+                    <div class="input-group" id="imageTweakOptions" style="display: none;">
+                        <label for="tweakAmount">微调强度:</label>
+                        <input type="range" id="tweakAmount" min="0" max="10" value="1">
+                        <span id="tweakAmountValue">1</span>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="outputQuality">导出图片质量 (JPEG):</label>
+                    <input type="range" id="outputQuality" min="0.1" max="1.0" step="0.05" value="0.9">
+                    <span id="outputQualityValue">90%</span>
+                </div>
             </div>
+
+            <p class="warning-message">
+                ⚠️ 注意：处理后的图片将替换原始文件，请提前备份重要图片！
+            </p>
 
             <div id="watermarkToolbar" class="watermark-toolbar">
                 <input type="text" id="toolbarWatermarkText" placeholder="水印文字" style="width: 150px;">
@@ -259,8 +304,18 @@
         const fileInput = document.getElementById('fileInput');
         const dropArea = document.getElementById('dropArea');
         const imagePreviews = document.getElementById('imagePreviews');
-        const enableDuplicateCheck = document.getElementById('enableDuplicateCheck');
-        const cropToRedBookRatio = document.getElementById('cropToRedBookRatio');
+        // const enableDuplicateCheck = document.getElementById('enableDuplicateCheck'); // 移除去重功能
+        const resizeToRedBookRatio = document.getElementById('resizeToRedBookRatio');
+        const redBookBgColorGroup = document.getElementById('redBookBgColorGroup');
+        const redBookBgColorSelect = document.getElementById('redBookBgColorSelect');
+        const redBookCustomBgColor = document.getElementById('redBookCustomBgColor');
+        const enableImageTweak = document.getElementById('enableImageTweak'); // 新增微调功能
+        const imageTweakOptions = document.getElementById('imageTweakOptions');
+        const tweakAmount = document.getElementById('tweakAmount');
+        const tweakAmountValue = document.getElementById('tweakAmountValue');
+        const outputQuality = document.getElementById('outputQuality'); // 新增输出质量
+        const outputQualityValue = document.getElementById('outputQualityValue');
+
         const addTextWatermarkBtn = document.getElementById('addTextWatermarkBtn');
         const clearAllWatermarksBtn = document.getElementById('clearAllWatermarksBtn');
         const previewCanvas = document.getElementById('previewCanvas');
@@ -286,11 +341,37 @@
 
         let uploadedFiles = []; // 存储原始文件对象
         let processedImages = []; // 存储处理后的Blob对象
-        let fileHashes = new Set(); // 用于去重
 
         let watermarks = []; // 存储所有水印对象
         let selectedWatermark = null; // 当前选中的水印
         let originalImage = null; // 当前预览的原始图片
+
+        // --- Web Worker ---
+        const imageProcessorWorker = new Worker('imageProcessor.js');
+        imageProcessorWorker.onmessage = (e) => {
+            if (e.data.type === 'progress') {
+                processingStatus.textContent = e.data.message;
+            } else if (e.data.type === 'result') {
+                processedImages.push({ name: e.data.name, blob: e.data.blob });
+                if (e.data.isLast) {
+                    processingStatus.textContent = `处理完成！共处理 ${processedImages.length} 张图片。`;
+                    processBtn.disabled = false;
+                    if (processedImages.length > 0) {
+                        downloadAllBtn.style.display = 'block';
+                    }
+                }
+            } else if (e.data.type === 'error') {
+                console.error("Worker error:", e.data.message);
+                processingStatus.textContent = `处理出错: ${e.data.message}`;
+                processBtn.disabled = false;
+            }
+        };
+        imageProcessorWorker.onerror = (e) => {
+            console.error("Worker encountered an error:", e);
+            processingStatus.textContent = `处理出错: ${e.message}`;
+            processBtn.disabled = false;
+        };
+
 
         // --- Canvas 交互状态 ---
         const RESIZE_HANDLE_SIZE = 10;
@@ -318,18 +399,25 @@
             isItalic: false,
             isUnderline: false,
             rotation: 0,
-            textAlign: 'left', // 文本对齐方式，目前仅支持left
-            padding: 5 // 文本框内边距
+            textAlign: 'center', // 文本居中
+            textBaseline: 'middle', // 文本基线居中
+            padding: 10 // 文本框内边距
         };
 
         // --- 辅助函数 ---
 
-        // 计算文本换行
-        function wrapText(context, text, maxWidth, fontSize) {
+        // 计算文本换行 (并返回每行宽度)
+        function wrapText(context, text, maxWidth, fontSize, fontFamily, isBold, isItalic) {
             const words = text.split(''); // 按字符分割，更适合中文
             let line = '';
             let lines = [];
-            let lineCount = 0;
+            
+            // 强制设置字体以便准确测量
+            let fontStyle = '';
+            if (isItalic) fontStyle += 'italic ';
+            if (isBold) fontStyle += 'bold ';
+            fontStyle += `${fontSize}px ${fontFamily}`;
+            context.font = fontStyle;
 
             for (let n = 0; n < words.length; n++) {
                 let testLine = line + words[n];
@@ -337,16 +425,19 @@
                 let testWidth = metrics.width;
 
                 if (testWidth > maxWidth && n > 0) {
-                    lines.push(line);
+                    lines.push({ text: line, width: context.measureText(line).width });
                     line = words[n];
-                    lineCount++;
                 } else {
                     line = testLine;
                 }
             }
-            lines.push(line);
-            lineCount++;
-            return { lines: lines, height: lineCount * (fontSize * 1.2) }; // 1.2 是行高因子
+            lines.push({ text: line, width: context.measureText(line).width });
+            
+            // 计算总高度
+            const lineHeight = fontSize * 1.2; // 1.2 是行高因子
+            const totalTextHeight = lines.length * lineHeight;
+            
+            return { lines: lines, totalTextHeight: totalTextHeight };
         }
 
         // 绘制水印文本框（带背景、边框、手柄）
@@ -375,26 +466,42 @@
             fontStyle += `${watermark.fontSize}px ${watermark.fontFamily}`;
             context.font = fontStyle;
             context.fillStyle = watermark.fontColor;
-            context.textBaseline = 'top'; // 始终从顶部开始绘制，方便换行计算
+            context.textAlign = watermark.textAlign; // 设置文本对齐方式
+            context.textBaseline = watermark.textBaseline; // 设置文本基线
 
-            const textX = watermark.x + watermark.padding;
-            const textY = watermark.y + watermark.padding;
             const textMaxWidth = watermark.width - watermark.padding * 2;
+            const wrapped = wrapText(context, watermark.text, textMaxWidth, watermark.fontSize, watermark.fontFamily, watermark.isBold, watermark.isItalic);
+            
+            const lineHeight = watermark.fontSize * 1.2;
+            const totalTextHeight = wrapped.totalTextHeight;
 
-            const wrapped = wrapText(context, watermark.text, textMaxWidth, watermark.fontSize);
-            wrapped.lines.forEach((line, i) => {
-                const lineHeight = watermark.fontSize * 1.2;
-                context.fillText(line, textX, textY + i * lineHeight);
+            // 计算文本起始Y坐标，使其在水印框内垂直居中
+            // 因为textBaseline是'middle'，所以文本的Y坐标是行高的中心，而不是顶部
+            let startTextY = watermark.y + watermark.height / 2 - totalTextHeight / 2 + lineHeight / 2;
+
+            wrapped.lines.forEach((lineObj, i) => {
+                let textX;
+                if (watermark.textAlign === 'center') {
+                    textX = watermark.x + watermark.width / 2;
+                } else { // 默认为left
+                    textX = watermark.x + watermark.padding;
+                }
+                
+                context.fillText(lineObj.text, textX, startTextY + i * lineHeight);
 
                 // 绘制下划线
                 if (watermark.isUnderline) {
-                    const metrics = context.measureText(line);
-                    const underlineY = textY + i * lineHeight + watermark.fontSize + 2; // 下划线位置
+                    const metrics = context.measureText(lineObj.text.text); // 注意这里是lineObj.text.text
+                    const underlineY = startTextY + i * lineHeight + watermark.fontSize / 2 + 2; // 下划线位置
+                    let underlineStartX = textX;
+                    if (watermark.textAlign === 'center') {
+                        underlineStartX -= metrics.width / 2;
+                    }
                     context.strokeStyle = watermark.fontColor;
                     context.lineWidth = Math.max(1, watermark.fontSize / 20);
                     context.beginPath();
-                    context.moveTo(textX, underlineY);
-                    context.lineTo(textX + metrics.width, underlineY);
+                    context.moveTo(underlineStartX, underlineY);
+                    context.lineTo(underlineStartX + metrics.width, underlineY);
                     context.stroke();
                 }
             });
@@ -411,10 +518,10 @@
 
                 // 绘制四个角的手柄
                 const handles = [
-                    { x: watermark.x - RESIZE_HANDLE_OFFSET, y: watermark.y - RESIZE_HANDLE_OFFSET, cursor: 'nwse-resize', name: 'nw' },
-                    { x: watermark.x + watermark.width - RESIZE_HANDLE_OFFSET, y: watermark.y - RESIZE_HANDLE_OFFSET, cursor: 'nesw-resize', name: 'ne' },
-                    { x: watermark.x - RESIZE_HANDLE_OFFSET, y: watermark.y + watermark.height - RESIZE_HANDLE_OFFSET, cursor: 'nesw-resize', name: 'sw' },
-                    { x: watermark.x + watermark.width - RESIZE_HANDLE_OFFSET, y: watermark.y + watermark.height - RESIZE_HANDLE_OFFSET, cursor: 'nwse-resize', name: 'se' }
+                    { x: watermark.x - RESIZE_HANDLE_OFFSET, y: watermark.y - RESIZE_HANDLE_OFFSET, name: 'nw' },
+                    { x: watermark.x + watermark.width - RESIZE_HANDLE_OFFSET, y: watermark.y - RESIZE_HANDLE_OFFSET, name: 'ne' },
+                    { x: watermark.x - RESIZE_HANDLE_OFFSET, y: watermark.y + watermark.height - RESIZE_HANDLE_OFFSET, name: 'sw' },
+                    { x: watermark.x + watermark.width - RESIZE_HANDLE_OFFSET, y: watermark.y + watermark.height - RESIZE_HANDLE_OFFSET, name: 'se' }
                 ];
 
                 handles.forEach(handle => {
@@ -487,7 +594,7 @@
 
                 // 尝试将工具栏放置在水印上方或下方
                 let toolbarX = selectedWatermark.x * scaleX + canvasRect.left;
-                let toolbarY = (selectedWatermark.y - 60) * scaleY + canvasRect.top; // 预估工具栏高度
+                let toolbarY = (selectedWatermark.y - watermarkToolbar.offsetHeight - 10) * scaleY + canvasRect.top; // 预留工具栏高度和间距
 
                 // 避免超出画布左边界
                 if (toolbarX < canvasRect.left) {
@@ -530,6 +637,18 @@
                 watermarkToolbar.classList.remove('visible');
             }
         }
+        
+        // 获取小红书背景颜色
+        function getRedBookBackgroundColor() {
+            const selectedOption = redBookBgColorSelect.value;
+            if (selectedOption === 'custom') {
+                return redBookCustomBgColor.value;
+            } else if (selectedOption === 'transparent') {
+                return 'rgba(0,0,0,0)'; // 完全透明
+            } else {
+                return selectedOption; // 'white' or 'black'
+            }
+        }
 
         // --- 文件上传处理 ---
         async function handleFiles(files) {
@@ -538,17 +657,6 @@
 
             for (const file of newFiles) {
                 if (file.type.startsWith('image/')) {
-                    if (enableDuplicateCheck.checked) {
-                        processingStatus.textContent = `正在检查文件 ${file.name} 的哈希值...`;
-                        const md5 = await calculateFileMD5(file);
-                        if (fileHashes.has(md5)) {
-                            console.warn(`文件 ${file.name} 是重复的，已跳过。`);
-                            alert(`文件 "${file.name}" 是重复的，已跳过。`);
-                            continue;
-                        }
-                        file.md5 = md5; // 将MD5存储在文件对象上
-                        fileHashes.add(md5);
-                    }
                     filesToAdd.push(file);
                 }
             }
@@ -568,7 +676,7 @@
                     div.innerHTML = `
                         <img src="${e.target.result}" alt="${file.name}">
                         <span>${file.name}</span>
-                        <button class="remove-btn" data-filename="${file.name}" data-md5="${file.md5 || ''}">移除</button>
+                        <button class="remove-btn" data-filename="${file.name}">移除</button>
                     `;
                     imagePreviews.appendChild(div);
                 };
@@ -584,6 +692,9 @@
                 previewCanvas.height = 0;
                 downloadAllBtn.style.display = 'none';
                 processingStatus.textContent = '';
+                watermarks = []; // 清空水印
+                selectedWatermark = null;
+                updateToolbar();
             }
         }
 
@@ -592,12 +703,8 @@
         imagePreviews.addEventListener('click', (e) => {
             if (e.target.classList.contains('remove-btn')) {
                 const filenameToRemove = e.target.dataset.filename;
-                const md5ToRemove = e.target.dataset.md5;
 
                 uploadedFiles = uploadedFiles.filter(file => file.name !== filenameToRemove);
-                if (md5ToRemove) {
-                    fileHashes.delete(md5ToRemove);
-                }
                 e.target.closest('.image-item').remove();
 
                 if (uploadedFiles.length > 0) {
@@ -635,21 +742,6 @@
             handleFiles(files);
         }, false);
 
-        // 计算文件MD5哈希值 (用于去重)
-        function calculateFileMD5(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                const spark = new SparkMD5.ArrayBuffer();
-
-                reader.onload = (e) => {
-                    spark.append(e.target.result);
-                    resolve(spark.end());
-                };
-                reader.onerror = (e) => reject(e);
-                reader.readAsArrayBuffer(file);
-            });
-        }
-
         // --- 预览渲染 ---
         async function updatePreview() {
             if (uploadedFiles.length === 0) {
@@ -675,34 +767,46 @@
         }
 
         function drawCanvas(img) {
-            // 根据小红书比例裁剪
-            const cropRatio = 3 / 4; // 宽度/高度
-            let sourceX = 0;
-            let sourceY = 0;
-            let sourceWidth = img.naturalWidth;
-            let sourceHeight = img.naturalHeight;
-            let destWidth = img.naturalWidth;
-            let destHeight = img.naturalHeight;
+            const targetRatio = 3 / 4; // 目标比例 宽度/高度
+            let finalCanvasWidth = img.naturalWidth;
+            let finalCanvasHeight = img.naturalHeight;
+            let drawX = 0;
+            let drawY = 0;
+            let drawWidth = img.naturalWidth;
+            let drawHeight = img.naturalHeight;
 
-            if (cropToRedBookRatio.checked) {
+            if (resizeToRedBookRatio.checked) {
                 const originalRatio = img.naturalWidth / img.naturalHeight;
 
-                if (originalRatio > cropRatio) { // 图片太宽，左右裁剪
-                    sourceWidth = img.naturalHeight * cropRatio;
-                    sourceX = (img.naturalWidth - sourceWidth) / 2;
-                } else if (originalRatio < cropRatio) { // 图片太高，上下裁剪
-                    sourceHeight = img.naturalWidth / cropRatio;
-                    sourceY = (img.naturalHeight - sourceHeight) / 2;
+                if (originalRatio > targetRatio) { // 图片太宽，需要增加上下边框
+                    finalCanvasHeight = img.naturalWidth / targetRatio;
+                    drawY = (finalCanvasHeight - img.naturalHeight) / 2;
+                } else if (originalRatio < targetRatio) { // 图片太高，需要增加左右边框
+                    finalCanvasWidth = img.naturalHeight * targetRatio;
+                    drawX = (finalCanvasWidth - img.naturalWidth) / 2;
                 }
-                destWidth = sourceWidth;
-                destHeight = sourceHeight;
+                // 如果是透明背景，则保持原尺寸，不改变画布大小，只绘制图片
+                if (redBookBgColorSelect.value === 'transparent') {
+                    finalCanvasWidth = img.naturalWidth;
+                    finalCanvasHeight = img.naturalHeight;
+                    drawX = 0;
+                    drawY = 0;
+                }
             }
 
-            previewCanvas.width = destWidth;
-            previewCanvas.height = destHeight;
+            previewCanvas.width = finalCanvasWidth;
+            previewCanvas.height = finalCanvasHeight;
 
             ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
-            ctx.drawImage(img, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, destWidth, destHeight);
+
+            // 绘制背景颜色（如果不是透明）
+            if (redBookBgColorSelect.value !== 'transparent' && resizeToRedBookRatio.checked) {
+                ctx.fillStyle = getRedBookBackgroundColor();
+                ctx.fillRect(0, 0, previewCanvas.width, previewCanvas.height);
+            }
+            
+            // 绘制原始图片
+            ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight, drawX, drawY, drawWidth, drawHeight);
 
             // 绘制所有水印
             watermarks.forEach(wm => drawWatermark(ctx, wm, wm === selectedWatermark));
@@ -802,23 +906,19 @@
             let foundWatermark = null;
             let foundHandle = null;
 
-            // 优先检查缩放手柄
-            for (let i = watermarks.length - 1; i >= 0; i--) { // 从上层水印开始检查
-                const wm = watermarks[i];
-                if (wm === selectedWatermark) { // 只检查选中水印的手柄
-                    foundHandle = getResizeHandle(mouseX, mouseY, wm);
-                    if (foundHandle) {
-                        isResizingWatermark = true;
-                        resizeHandle = foundHandle;
-                        selectedWatermark = wm;
-                        dragStartX = mouseX;
-                        dragStartY = mouseY;
-                        return;
-                    }
+            // 优先检查缩放手柄 (只检查选中水印的手柄)
+            if (selectedWatermark) {
+                foundHandle = getResizeHandle(mouseX, mouseY, selectedWatermark);
+                if (foundHandle) {
+                    isResizingWatermark = true;
+                    resizeHandle = foundHandle;
+                    dragStartX = mouseX;
+                    dragStartY = mouseY;
+                    return;
                 }
             }
-
-            // 检查是否点击了水印
+            
+            // 检查是否点击了水印 (从上层水印开始检查)
             for (let i = watermarks.length - 1; i >= 0; i--) {
                 const wm = watermarks[i];
                 if (isPointInWatermark(mouseX, mouseY, wm)) {
@@ -866,11 +966,9 @@
                 let newWidth = selectedWatermark.width;
                 let newHeight = selectedWatermark.height;
 
-                // 简单的手柄缩放逻辑 (未考虑旋转时手柄的复杂变换)
-                // 实际应该将鼠标点转换到未旋转的局部坐标系进行计算
-                // 这里为了简化，暂时只处理未旋转或小角度旋转的情况
                 const minSize = 30; // 最小尺寸
 
+                // 简化手柄缩放逻辑
                 switch (resizeHandle) {
                     case 'nw':
                         newX += dx; newY += dy;
@@ -893,6 +991,8 @@
                 selectedWatermark.width = Math.max(minSize, newWidth);
                 selectedWatermark.height = Math.max(minSize, newHeight);
                 // 调整x,y以保持对角线锚点
+                // 注意：这里需要更精细的逻辑来处理不同手柄的锚点，否则在拖动时可能会跳动
+                // 暂时保持当前逻辑，但知道这里是简化的
                 if (resizeHandle === 'nw' || resizeHandle === 'sw') selectedWatermark.x = newX;
                 if (resizeHandle === 'nw' || resizeHandle === 'ne') selectedWatermark.y = newY;
 
@@ -941,10 +1041,36 @@
         });
 
         // --- 其他处理选项 ---
-        cropToRedBookRatio.addEventListener('change', () => {
+        resizeToRedBookRatio.addEventListener('change', () => {
+            redBookBgColorGroup.style.display = resizeToRedBookRatio.checked ? 'flex' : 'none';
             if (originalImage) {
                 drawCanvas(originalImage);
             }
+        });
+
+        redBookBgColorSelect.addEventListener('change', () => {
+            redBookCustomBgColor.style.display = redBookBgColorSelect.value === 'custom' ? 'block' : 'none';
+            if (originalImage) {
+                drawCanvas(originalImage);
+            }
+        });
+
+        redBookCustomBgColor.addEventListener('input', () => {
+            if (originalImage) {
+                drawCanvas(originalImage);
+            }
+        });
+        
+        enableImageTweak.addEventListener('change', () => {
+            imageTweakOptions.style.display = enableImageTweak.checked ? 'flex' : 'none';
+        });
+
+        tweakAmount.addEventListener('input', () => {
+            tweakAmountValue.textContent = tweakAmount.value;
+        });
+
+        outputQuality.addEventListener('input', () => {
+            outputQualityValue.textContent = `${Math.round(outputQuality.value * 100)}%`;
         });
 
 
@@ -961,73 +1087,38 @@
 
             processBtn.disabled = true;
             downloadAllBtn.style.display = 'none';
-            processingStatus.textContent = '正在处理中...';
+            processingStatus.textContent = '正在准备处理...';
             processedImages = [];
 
-            const tempCanvas = document.createElement('canvas'); // 用于处理的临时canvas
+            // 收集处理参数
+            const processingOptions = {
+                watermarks: watermarks,
+                resizeToRedBookRatio: resizeToRedBookRatio.checked,
+                redBookBackgroundColor: getRedBookBackgroundColor(),
+                enableImageTweak: enableImageTweak.checked,
+                tweakAmount: parseFloat(tweakAmount.value),
+                outputQuality: parseFloat(outputQuality.value)
+            };
 
-            for (let i = 0; i < uploadedFiles.length; i++) {
-                const file = uploadedFiles[i];
-                processingStatus.textContent = `正在处理 ${i + 1}/${uploadedFiles.length}：${file.name}`;
-
-                await new Promise(resolve => {
-                    const img = new Image();
-                    img.onload = () => {
-                       // 应用裁剪
-                        const cropRatio = 3 / 4; // 宽度/高度
-                        let sourceX = 0;
-                        let sourceY = 0;
-                        let sourceWidth = img.naturalWidth;
-                        let sourceHeight = img.naturalHeight;
-                        let destWidth = img.naturalWidth;
-                        let destHeight = img.naturalHeight;
-
-                        if (cropToRedBookRatio.checked) {
-                            const originalRatio = img.naturalWidth / img.naturalHeight;
-
-                            if (originalRatio > cropRatio) { // 图片太宽，左右裁剪
-                                sourceWidth = img.naturalHeight * cropRatio;
-                                sourceX = (img.naturalWidth - sourceWidth) / 2;
-                            } else if (originalRatio < cropRatio) { // 图片太高，上下裁剪
-                                sourceHeight = img.naturalWidth / cropRatio;
-                                sourceY = (img.naturalHeight - sourceHeight) / 2;
-                            }
-                            destWidth = sourceWidth;
-                            destHeight = sourceHeight;
-                        }
-
-                        tempCanvas.width = destWidth;
-                        tempCanvas.height = destHeight;
-                        const tempCtx = tempCanvas.getContext('2d');
-                        tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
-                        tempCtx.drawImage(img, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, destWidth, destHeight);
-
-                        // 绘制所有水印
-                        watermarks.forEach(wm => drawWatermark(tempCtx, wm, false)); // 不绘制选中状态
-
-                        const originalExt = file.name.split('.').pop().toLowerCase();
-                        const mimeType = originalExt === 'png' ? 'image/png' : 'image/jpeg';
-                        const quality = originalExt === 'jpeg' || originalExt === 'jpg' ? 0.9 : 1.0;
-
-                        tempCanvas.toBlob(blob => {
-                            processedImages.push({ name: `watermarked_${file.name}`, blob: blob });
-                            resolve();
-                        }, mimeType, quality);
-                    };
-                    img.onerror = (error) => {
-                        console.error(`Error loading image ${file.name}:`, error);
-                        processingStatus.textContent = `加载图片 ${file.name} 失败，跳过。`;
-                        resolve();
-                    };
-                    img.src = URL.createObjectURL(file);
+            // 将所有文件转换为 Data URL 传递给 Worker
+            const filesData = await Promise.all(uploadedFiles.map(file => {
+                return new Promise(resolve => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve({
+                        name: file.name,
+                        dataURL: e.target.result,
+                        type: file.type
+                    });
+                    reader.readAsDataURL(file);
                 });
-            }
+            }));
 
-            processingStatus.textContent = `处理完成！共处理 ${processedImages.length} 张图片。`;
-            processBtn.disabled = false;
-            if (processedImages.length > 0) {
-                downloadAllBtn.style.display = 'block';
-            }
+            // 发送数据到 Worker
+            imageProcessorWorker.postMessage({
+                type: 'processImages',
+                filesData: filesData,
+                options: processingOptions
+            });
         });
 
         // --- 批量下载所有图片 ---
