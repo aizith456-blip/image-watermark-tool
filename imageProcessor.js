@@ -6,6 +6,7 @@ function wrapText(context, text, maxWidth, fontSize, fontFamily, isBold, isItali
     let line = '';
     let lines = [];
     
+    // 强制设置字体以便准确测量
     let fontStyle = '';
     if (isItalic) fontStyle += 'italic ';
     if (isBold) fontStyle += 'bold ';
@@ -26,14 +27,14 @@ function wrapText(context, text, maxWidth, fontSize, fontFamily, isBold, isItali
     }
     lines.push({ text: line, width: context.measureText(line).width });
     
-    const lineHeight = fontSize * 1.2;
+    const lineHeight = fontSize * 1.2; // 1.2 是行高因子
     const totalTextHeight = lines.length * lineHeight;
     
     return { lines: lines, totalTextHeight: totalTextHeight };
 }
 
 // 辅助函数：绘制水印（和主线程的drawWatermark功能类似）
-function drawWatermark(context, watermark, isSelected = false) {
+function drawWatermark(context, watermark) { // 移除了 isSelected 参数，因为 Worker 只负责绘制最终效果
     context.save();
 
     const centerX = watermark.x + watermark.width / 2;
@@ -42,17 +43,19 @@ function drawWatermark(context, watermark, isSelected = false) {
     context.rotate(watermark.rotation * Math.PI / 180);
     context.translate(-centerX, -centerY);
 
+    // 绘制背景
     if (watermark.backgroundOpacity > 0) {
         context.globalAlpha = watermark.backgroundOpacity;
         context.fillStyle = watermark.backgroundColor;
         context.fillRect(watermark.x, watermark.y, watermark.width, watermark.height);
     }
 
+    // 绘制文本
     context.globalAlpha = watermark.opacity;
     let fontStyle = '';
     if (watermark.isItalic) fontStyle += 'italic ';
     if (watermark.isBold) fontStyle += 'bold ';
-    fontStyle += `${watermark.fontSize}px ${watermark.fontFamily}`;
+    fontStyle += `${watermark.fontSize}px ${waterFamily}`;
     context.font = fontStyle;
     context.fillStyle = watermark.fontColor;
     context.textAlign = watermark.textAlign;
@@ -64,21 +67,24 @@ function drawWatermark(context, watermark, isSelected = false) {
     const lineHeight = watermark.fontSize * 1.2;
     const totalTextHeight = wrapped.totalTextHeight;
 
+    // 计算文本起始Y坐标，使其在水印框内垂直居中
+    // 因为textBaseline是'middle'，所以文本的Y坐标是行高的中心，而不是顶部
     let startTextY = watermark.y + watermark.height / 2 - totalTextHeight / 2 + lineHeight / 2;
 
     wrapped.lines.forEach((lineObj, i) => {
         let textX;
         if (watermark.textAlign === 'center') {
             textX = watermark.x + watermark.width / 2;
-        } else {
+        } else { // 默认为left
             textX = watermark.x + watermark.padding;
         }
         
         context.fillText(lineObj.text, textX, startTextY + i * lineHeight);
 
+        // 绘制下划线
         if (watermark.isUnderline) {
-            const metrics = context.measureText(lineObj.text);
-            const underlineY = startTextY + i * lineHeight + watermark.fontSize / 2 + 2;
+            const metrics = context.measureText(lineObj.text); 
+            const underlineY = startTextY + i * lineHeight + watermark.fontSize / 2 + 2; // 下划线位置
             let underlineStartX = textX;
             if (watermark.textAlign === 'center') {
                 underlineStartX -= metrics.width / 2;
@@ -125,38 +131,41 @@ function applyImageTweak(ctx, canvas, tweakAmount) {
 self.onmessage = async (e) => {
     if (e.data.type === 'processImages') {
         const { filesData, options } = e.data;
-        const processedResults = [];
+        // const processedResults = []; // 这个变量在Worker中不再需要
 
         for (let i = 0; i < filesData.length; i++) {
             const fileData = filesData[i];
             self.postMessage({ type: 'progress', message: `正在处理 ${i + 1}/${filesData.length}：${fileData.name}` });
 
             try {
-                const img = await loadImage(fileData.dataURL);
-                const tempCanvas = new OffscreenCanvas(img.naturalWidth, img.naturalHeight); // 在Worker中使用OffscreenCanvas
+                // 使用 createImageBitmap 从 Data URL 加载图片
+                const imageBlob = await (await fetch(fileData.dataURL)).blob();
+                const imgBitmap = await createImageBitmap(imageBlob);
+
+                const tempCanvas = new OffscreenCanvas(imgBitmap.width, imgBitmap.height); // 在Worker中使用OffscreenCanvas
                 const tempCtx = tempCanvas.getContext('2d');
 
                 const targetRatio = 3 / 4;
-                let finalCanvasWidth = img.naturalWidth;
-                let finalCanvasHeight = img.naturalHeight;
+                let finalCanvasWidth = imgBitmap.width;
+                let finalCanvasHeight = imgBitmap.height;
                 let drawX = 0;
                 let drawY = 0;
-                let drawWidth = img.naturalWidth;
-                let drawHeight = img.naturalHeight;
+                let drawWidth = imgBitmap.width;
+                let drawHeight = imgBitmap.height;
 
                 if (options.resizeToRedBookRatio) {
-                    const originalRatio = img.naturalWidth / img.naturalHeight;
+                    const originalRatio = imgBitmap.width / imgBitmap.height;
 
                     if (originalRatio > targetRatio) {
-                        finalCanvasHeight = img.naturalWidth / targetRatio;
-                        drawY = (finalCanvasHeight - img.naturalHeight) / 2;
+                        finalCanvasHeight = imgBitmap.width / targetRatio;
+                        drawY = (finalCanvasHeight - imgBitmap.height) / 2;
                     } else if (originalRatio < targetRatio) {
-                        finalCanvasWidth = img.naturalHeight * targetRatio;
-                        drawX = (finalCanvasWidth - img.naturalWidth) / 2;
+                        finalCanvasWidth = imgBitmap.height * targetRatio;
+                        drawX = (finalCanvasWidth - imgBitmap.width) / 2;
                     }
                     if (options.redBookBackgroundColor === 'rgba(0,0,0,0)') { // 透明背景
-                        finalCanvasWidth = img.naturalWidth;
-                        finalCanvasHeight = img.naturalHeight;
+                        finalCanvasWidth = imgBitmap.width;
+                        finalCanvasHeight = imgBitmap.height;
                         drawX = 0;
                         drawY = 0;
                     }
@@ -171,10 +180,10 @@ self.onmessage = async (e) => {
                     tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
                 }
 
-                tempCtx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight, drawX, drawY, drawWidth, drawHeight);
+                tempCtx.drawImage(imgBitmap, 0, 0, imgBitmap.width, imgBitmap.height, drawX, drawY, drawWidth, drawHeight);
 
                 // 绘制水印
-                options.watermarks.forEach(wm => drawWatermark(tempCtx, wm, false));
+                options.watermarks.forEach(wm => drawWatermark(tempCtx, wm)); // 移除了 isSelected 参数
 
                 // 应用图片微调
                 if (options.enableImageTweak && options.tweakAmount > 0) {
@@ -203,11 +212,9 @@ self.onmessage = async (e) => {
 };
 
 // 辅助函数：在 Worker 中加载图片 (返回 Promise)
-function loadImage(src) {
-    return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = reject;
-        img.src = src;
-    });
+// 修正为使用 fetch 和 createImageBitmap
+async function loadImage(dataURL) {
+    const response = await fetch(dataURL);
+    const blob = await response.blob();
+    return await createImageBitmap(blob);
 }
