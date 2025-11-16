@@ -55,7 +55,8 @@ function drawWatermark(context, watermark) { // 移除了 isSelected 参数，�
     let fontStyle = '';
     if (watermark.isItalic) fontStyle += 'italic ';
     if (watermark.isBold) fontStyle += 'bold ';
-    fontStyle += `${watermark.fontSize}px ${waterFamily}`;
+    // 修复：将 waterFamily 改为 watermark.fontFamily
+    fontStyle += `${watermark.fontSize}px ${watermark.fontFamily}`; 
     context.font = fontStyle;
     context.fillStyle = watermark.fontColor;
     context.textAlign = watermark.textAlign;
