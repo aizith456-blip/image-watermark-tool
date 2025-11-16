@@ -55,7 +55,7 @@ function drawWatermark(context, watermark) { // 移除了 isSelected 参数，�
     let fontStyle = '';
     if (watermark.isItalic) fontStyle += 'italic ';
     if (watermark.isBold) fontStyle += 'bold ';
-    // 修复：将 waterFamily 改为 watermark.fontFamily
+    // 修复点：将 `waterFamily` 改为 `watermark.fontFamily`
     fontStyle += `${watermark.fontSize}px ${watermark.fontFamily}`; 
     context.font = fontStyle;
     context.fillStyle = watermark.fontColor;
@@ -132,7 +132,6 @@ function applyImageTweak(ctx, canvas, tweakAmount) {
 self.onmessage = async (e) => {
     if (e.data.type === 'processImages') {
         const { filesData, options } = e.data;
-        // const processedResults = []; // 这个变量在Worker中不再需要
 
         for (let i = 0; i < filesData.length; i++) {
             const fileData = filesData[i];
@@ -184,7 +183,7 @@ self.onmessage = async (e) => {
                 tempCtx.drawImage(imgBitmap, 0, 0, imgBitmap.width, imgBitmap.height, drawX, drawY, drawWidth, drawHeight);
 
                 // 绘制水印
-                options.watermarks.forEach(wm => drawWatermark(tempCtx, wm)); // 移除了 isSelected 参数
+                options.watermarks.forEach(wm => drawWatermark(tempCtx, wm)); 
 
                 // 应用图片微调
                 if (options.enableImageTweak && options.tweakAmount > 0) {
