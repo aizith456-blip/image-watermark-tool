@@ -19,7 +19,7 @@
 
 ## 如何使用
 
-1.  **访问工具：** [点击这里访问在线工具](https://YOUR_USERNAME.github.io/YOUR_REPOSITORY_NAME/)
+1.  **访问工具：** [点击这里访问在线工具][(https://aizith456-blip.github.io/image-watermark-tool/)
     (请将 `YOUR_USERNAME` 替换为你的 GitHub 用户名，将 `YOUR_REPOSITORY_NAME` 替换为你的仓库名)
 2.  **选择图片：** 点击“选择文件”按钮或将图片文件拖拽到指定区域。
 3.  **配置水印：** 在“配置水印”区域，输入水印文字，并调整字体、字号、颜色、透明度、位置和旋转角度。
