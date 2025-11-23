@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>水印编辑器 v13.5 (增加文字背景功能)</title>
+    <title>水印编辑器 v14.0 (多图预览版)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&family=Noto+Serif+SC:wght@700&family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
@@ -11,8 +11,42 @@
     <style>
         body { font-family: 'Noto Sans SC', sans-serif; margin: 0; height: 100vh; overflow: hidden; background-color: #f4f6f8; }
         .layout { display: flex; height: 100%; }
-        .workspace { flex: 1; display: flex; justify-content: center; align-items: center; background-color: #e0e0e0; background-image: radial-gradient(#aaa 1px, transparent 1px); background-size: 20px 20px; overflow: auto; position: relative; }
+        
+        /* 工作区改为 Flex Column，以便放置缩略图栏 */
+        .workspace { flex: 1; display: flex; flex-direction: column; background-color: #e0e0e0; background-image: radial-gradient(#aaa 1px, transparent 1px); background-size: 20px 20px; position: relative; }
+        
+        /* 画布容器占据剩余空间 */
+        .canvas-area { flex: 1; display: flex; justify-content: center; align-items: center; overflow: auto; width: 100%; position: relative; }
         .canvas-box { box-shadow: 0 8px 24px rgba(0,0,0,0.15); background: white; }
+
+        /* 🆕 新增：底部缩略图栏 */
+        .thumbnail-bar { 
+            height: 100px; 
+            background: #fff; 
+            border-top: 1px solid #ccc; 
+            display: flex; 
+            align-items: center; 
+            padding: 0 15px; 
+            gap: 12px; 
+            overflow-x: auto; 
+            flex-shrink: 0; 
+            z-index: 20;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+        }
+        .thumb-item { 
+            height: 70px; 
+            width: 70px;
+            border-radius: 6px; 
+            cursor: pointer; 
+            object-fit: cover; 
+            border: 3px solid transparent; 
+            transition: all 0.2s;
+            background: #eee;
+        }
+        .thumb-item:hover { transform: scale(1.05); }
+        .thumb-item.active { border-color: #007bff; box-shadow: 0 0 8px rgba(0,123,255,0.4); }
+
+        /* 侧边栏保持不变 */
         .sidebar { width: 320px; background: white; border-left: 1px solid #ddd; display: flex; flex-direction: column; padding: 20px; z-index: 10; box-shadow: -2px 0 10px rgba(0,0,0,0.05); }
         h2 { margin: 0 0 20px 0; font-size: 18px; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; color: #333; }
         .panel { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px dashed #eee; }
@@ -27,69 +61,64 @@
         .footer { margin-top: auto; }
         #download-link { display: block; text-align: center; margin-top: 10px; font-size: 13px; color: #007bff; text-decoration: none; }
 
-        /* --- 悬浮工具栏样式更新 --- */
-        .floating-tools {
-            position: absolute; display: none; background: white; 
-            padding: 6px 10px; border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); 
-            z-index: 999; border: 1px solid #eee; animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
+        /* 悬浮工具栏保持不变 */
+        .floating-tools { position: absolute; display: none; background: white; padding: 6px 10px; border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); z-index: 999; border: 1px solid #eee; animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-        
         .tool-row { display: flex; align-items: center; gap: 8px; }
         .icon-btn { width: 32px; height: 32px; border: none; background: transparent; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; color: #555; }
         .icon-btn:hover { background: #f0f0f0; }
         .icon-btn.active { background: #e3f2fd; color: #007bff; }
         .divider { width: 1px; height: 20px; background: #ddd; }
-        
-        /* 颜色选择器包装 */
         .color-wrap { position: relative; width: 28px; height: 28px; border-radius: 4px; border: 1px solid #ddd; overflow: hidden; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .color-wrap:hover { background: #f0f0f0; }
         .color-label { font-size: 10px; position: absolute; pointer-events: none; color: #555; font-weight: bold; z-index: 2; text-shadow: 0 0 2px white; }
         input[type="color"] { width: 150%; height: 150%; border: none; padding: 0; background: none; cursor: pointer; position: absolute; top: -25%; left: -25%; z-index: 1; }
+        
+        /* 滚动条美化 */
+        .thumbnail-bar::-webkit-scrollbar { height: 8px; }
+        .thumbnail-bar::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+        .thumbnail-bar::-webkit-scrollbar-track { background: #f5f5f5; }
     </style>
 </head>
 <body>
 
 <div class="layout">
     <div class="workspace" id="workspace">
-        <div class="canvas-box">
-            <canvas id="c"></canvas>
+        <div class="canvas-area">
+            <div class="canvas-box">
+                <canvas id="c"></canvas>
+            </div>
+            <!-- 悬浮工具栏 -->
+            <div id="float-bar" class="floating-tools">
+                <div class="tool-row">
+                    <select id="tool-font" style="width: 90px; padding: 4px; font-size: 12px; border:1px solid #eee;">
+                        <option value="'Noto Sans SC', sans-serif">思源黑体</option>
+                        <option value="'Noto Serif SC', serif">思源宋体</option>
+                        <option value="'ZCOOL KuaiLe', cursive">快乐体</option>
+                        <option value="Arial, sans-serif">Arial</option>
+                    </select>
+                    <div class="divider"></div>
+                    <button class="icon-btn" id="tool-bold" title="加粗">B</button>
+                    <div class="divider"></div>
+                    <div class="color-wrap" title="文字颜色">
+                        <span class="color-label">字</span>
+                        <input type="color" id="tool-color">
+                    </div>
+                    <div class="color-wrap" title="背景颜色">
+                        <span class="color-label">底</span>
+                        <input type="color" id="tool-bg-color" value="#ffff00">
+                    </div>
+                    <button class="icon-btn" id="tool-bg-clear" title="清除背景" style="font-size: 14px;">🚫</button>
+                    <div class="divider"></div>
+                    <button class="icon-btn" id="tool-del" title="删除" style="color:#d9534f">🗑️</button>
+                </div>
+            </div>
         </div>
         
-        <!-- 更新后的悬浮工具栏 -->
-        <div id="float-bar" class="floating-tools">
-            <div class="tool-row">
-                <!-- 字体 -->
-                <select id="tool-font" style="width: 90px; padding: 4px; font-size: 12px; border:1px solid #eee;">
-                    <option value="'Noto Sans SC', sans-serif">思源黑体</option>
-                    <option value="'Noto Serif SC', serif">思源宋体</option>
-                    <option value="'ZCOOL KuaiLe', cursive">快乐体</option>
-                    <option value="Arial, sans-serif">Arial</option>
-                </select>
-                
-                <div class="divider"></div>
-                <button class="icon-btn" id="tool-bold" title="加粗">B</button>
-                
-                <div class="divider"></div>
-                
-                <!-- 字体颜色 -->
-                <div class="color-wrap" title="文字颜色">
-                    <span class="color-label">字</span>
-                    <input type="color" id="tool-color">
-                </div>
-
-                <!-- 🆕 新增：背景颜色 -->
-                <div class="color-wrap" title="背景颜色">
-                    <span class="color-label">底</span>
-                    <input type="color" id="tool-bg-color" value="#ffff00">
-                </div>
-
-                <!-- 🆕 新增：清除背景按钮 -->
-                <button class="icon-btn" id="tool-bg-clear" title="清除背景" style="font-size: 14px;">🚫</button>
-
-                <div class="divider"></div>
-                <button class="icon-btn" id="tool-del" title="删除" style="color:#d9534f">🗑️</button>
-            </div>
+        <!-- 🆕 底部缩略图栏 -->
+        <div class="thumbnail-bar" id="thumbnail-bar">
+            <!-- JS 动态填充图片 -->
+            <span style="color:#999; font-size:13px; width:100%; text-align:center;">暂无图片，请在右侧上传</span>
         </div>
     </div>
 
@@ -135,14 +164,13 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // --- 1. 初始化 Fabric (代码未变) ---
+    // --- 1. 初始化 Fabric ---
     const canvas = new fabric.Canvas('c', {
-        width: 500, height: 400,
-        backgroundColor: '#fff',
-        preserveObjectStacking: true 
+        width: 500, height: 400, backgroundColor: '#fff', preserveObjectStacking: true 
     });
 
     const fileInput = document.getElementById('file-input');
+    const thumbBar = document.getElementById('thumbnail-bar');
     const btn34 = document.getElementById('btn-34');
     const fillSelect = document.getElementById('fill-mode');
     const btnText = document.getElementById('btn-text');
@@ -152,42 +180,52 @@ document.addEventListener('DOMContentLoaded', () => {
     let originalFiles = [];
     let is3to4Mode = false;
     let previewScale = 1;
-    let originalWidth = 0;
-    let originalHeight = 0;
+    let currentFileIndex = 0; // 当前选中的图片索引
 
-    // --- 2. 图片上传 (最稳健写法 - 代码未变) ---
-    fileInput.onchange = (e) => {
-        if (!e.target.files.length) return;
-        originalFiles = Array.from(e.target.files);
+    // --- 🆕 重构：加载指定图片到画布 ---
+    function loadPreviewImage(index) {
+        if (!originalFiles[index]) return;
+        currentFileIndex = index;
         
-        const file = originalFiles[0];
+        // 更新缩略图选中状态
+        const thumbs = document.querySelectorAll('.thumb-item');
+        thumbs.forEach((t, i) => {
+            if (i === index) t.classList.add('active');
+            else t.classList.remove('active');
+        });
+
+        // 核心逻辑：加载图片
+        const file = originalFiles[index];
         const reader = new FileReader();
-        
         reader.onload = (f) => {
             const imgObj = new Image();
             imgObj.src = f.target.result;
             
             imgObj.onload = () => {
-                canvas.clear();
+                // 保存现有的水印对象（如果有）
+                // 这样切换图片时，你刚才打的字不会消失
+                const existingObjects = canvas.getObjects();
+                
+                // 重置画布状态，但为了"3:4"逻辑的稳定性，每次切换图片我们都重置回原始模式
+                // 除非你想做非常复杂的动态计算，否则重置是最稳的
                 is3to4Mode = false;
-                downloadLink.textContent = '';
                 btn34.textContent = "📐 改为 3:4";
                 btn34.disabled = false;
                 fillSelect.disabled = false;
-                btnProcess.disabled = false;
-                btnProcess.textContent = `处理 ${originalFiles.length} 张图片`;
                 
-                originalWidth = imgObj.width;
-                originalHeight = imgObj.height;
-
+                // 清空并重新设置尺寸
+                const w = imgObj.width;
+                const h = imgObj.height;
                 const maxW = 800, maxH = 600;
-                const scaleX = maxW / originalWidth;
-                const scaleY = maxH / originalHeight;
+                const scaleX = maxW / w;
+                const scaleY = maxH / h;
                 previewScale = Math.min(scaleX, scaleY, 1);
                 
-                const finalW = originalWidth * previewScale;
-                const finalH = originalHeight * previewScale;
+                const finalW = w * previewScale;
+                const finalH = h * previewScale;
 
+                // 我们使用 clear() 来清除背景，但马上把对象加回来
+                canvas.clear(); 
                 canvas.setWidth(finalW);
                 canvas.setHeight(finalH);
                 canvas.setBackgroundColor('#fff', canvas.renderAll.bind(canvas));
@@ -198,13 +236,43 @@ document.addEventListener('DOMContentLoaded', () => {
                     scaleX: previewScale, scaleY: previewScale
                 });
                 
-                canvas.setBackgroundImage(fabricImg, canvas.renderAll.bind(canvas));
+                canvas.setBackgroundImage(fabricImg, () => {
+                    // 恢复水印对象
+                    if (existingObjects.length > 0) {
+                        canvas.add(...existingObjects);
+                    }
+                    canvas.renderAll();
+                });
             };
         };
         reader.readAsDataURL(file);
+    }
+
+    // --- 2. 图片上传与缩略图生成 ---
+    fileInput.onchange = (e) => {
+        if (!e.target.files.length) return;
+        originalFiles = Array.from(e.target.files);
+        
+        // UI 重置
+        downloadLink.textContent = '';
+        btnProcess.disabled = false;
+        btnProcess.textContent = `处理 ${originalFiles.length} 张图片`;
+        thumbBar.innerHTML = ''; // 清空旧缩略图
+
+        // 生成缩略图
+        originalFiles.forEach((file, idx) => {
+            const img = document.createElement('img');
+            img.src = URL.createObjectURL(file);
+            img.className = 'thumb-item';
+            img.onclick = () => loadPreviewImage(idx); // 点击切换
+            thumbBar.appendChild(img);
+        });
+
+        // 默认加载第一张
+        loadPreviewImage(0);
     };
 
-    // --- 3. 智能边缘取色 (代码未变) ---
+    // --- 3. 智能边缘取色 (不变) ---
     function getSmartColor(imgElem) {
         const c = document.createElement('canvas');
         const ctx = c.getContext('2d');
@@ -221,7 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return `rgb(${~~(r/count)}, ${~~(g/count)}, ${~~(b/count)})`;
     }
 
-    // --- 4. 修改比例 (核心修复 - 代码未变) ---
+    // --- 4. 修改比例 (不变) ---
     btn34.onclick = () => {
         if (is3to4Mode || !canvas.backgroundImage) return;
         
@@ -230,29 +298,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentH = canvas.height;
         const targetRatio = 3/4;
         
-        let newW = currentW;
-        let newH = currentH;
+        let newW = currentW, newH = currentH;
 
-        if (currentW / currentH > targetRatio) {
-            newH = currentW / targetRatio;
-        } else {
-            newW = currentH * targetRatio;
-        }
+        if (currentW / currentH > targetRatio) newH = currentW / targetRatio;
+        else newW = currentH * targetRatio;
 
         let color = fillSelect.value;
-        if (color === 'smart') {
-            color = getSmartColor(bgImg.getElement());
-        }
+        if (color === 'smart') color = getSmartColor(bgImg.getElement());
 
         canvas.setWidth(newW);
         canvas.setHeight(newH);
         canvas.setBackgroundColor(color, canvas.renderAll.bind(canvas));
         
-        bgImg.set({
-            left: newW / 2, top: newH / 2,
-            originX: 'center', originY: 'center'
-        });
-        
+        bgImg.set({ left: newW / 2, top: newH / 2, originX: 'center', originY: 'center' });
         canvas.requestRenderAll();
         is3to4Mode = true;
         btn34.textContent = "✅ 已调整";
@@ -260,7 +318,7 @@ document.addEventListener('DOMContentLoaded', () => {
         fillSelect.disabled = true;
     };
 
-    // --- 5. 添加文本 (代码未变) ---
+    // --- 5. 添加文本 (不变) ---
     btnText.onclick = () => {
         const text = new fabric.IText('双击编辑文字', {
             left: canvas.width / 2, top: canvas.height / 2,
@@ -275,7 +333,7 @@ document.addEventListener('DOMContentLoaded', () => {
         canvas.setActiveObject(text);
     };
 
-    // --- 6. 处理导出 (代码未变) ---
+    // --- 6. 处理导出 (不变) ---
     btnProcess.onclick = async () => {
         canvas.discardActiveObject().renderAll();
         btnProcess.disabled = true;
@@ -290,6 +348,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const file = originalFiles[i];
             btnProcess.textContent = `⏳ 处理中... ${i+1}/${originalFiles.length}`;
             try {
+                // 如果当前选中的是这张图，且已经调整了3:4，我们直接用当前的模式
+                // 但批量处理时，通常我们希望应用当前预览的"设置"到所有图片
+                // 这里为了稳健，我们沿用之前的逻辑：对每张图重新计算
                 const blob = await processImage(file, watermarks, is3to4Mode, fillMode, pW);
                 zip.file(`watermark_${file.name}`, blob);
             } catch(e) { console.error(e); }
@@ -318,19 +379,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         const r = 3/4;
                         if(w/h > r) h = w/r; else w = h*r;
                     }
-
                     const vc = new fabric.StaticCanvas(null, {width: w, height: h});
                     let bgC = null;
-                    if(do34) {
-                        bgC = (fillMode === 'smart') ? getSmartColor(img) : fillMode;
-                    }
+                    if(do34) bgC = (fillMode === 'smart') ? getSmartColor(img) : fillMode;
                     vc.backgroundColor = bgC;
-
                     const bg = new fabric.Image(img, {
                         left: w/2, top: h/2, originX:'center', originY:'center'
                     });
                     vc.add(bg);
-
                     const scale = w / previewWidth;
                     if(watermarks.length) {
                         watermarks.forEach(wm => {
@@ -355,80 +411,62 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- 7. 悬浮工具栏逻辑 (🆕 更新部分) ---
+    // --- 7. 悬浮工具栏 (不变) ---
     const floatBar = document.getElementById('float-bar');
-    
     function updateFloatBar() {
         const obj = canvas.getActiveObject();
         if (obj && obj.type === 'i-text') {
             floatBar.style.display = 'block';
-            
             const bound = obj.getBoundingRect();
-            const toolbarH = floatBar.offsetHeight || 40;
+            const containerRect = document.querySelector('.canvas-box').getBoundingClientRect();
+            // 简单的相对定位
+            // 注意：因为现在有了滚动条，定位可能需要微调，但Fabric通常处理得很好
+            // 我们这里简化：根据对象在canvas内的坐标来定
+            // 因为floatBar是绝对定位在workspace内(relative)
+            // 我们需要获取对象相对于workspace的坐标
             
+            // 更简单的方案：Fabric事件提供的 transform 或者 pointer
+            // 这里沿用之前的逻辑，微调CSS定位
+            const toolbarH = floatBar.offsetHeight || 40;
             let top = bound.top - toolbarH - 10;
             let left = bound.left + (bound.width/2) - (floatBar.offsetWidth/2);
-            
             if(top < 0) top = bound.top + bound.height + 10;
             if(left < 0) left = 10;
             
             floatBar.style.top = top + 'px';
             floatBar.style.left = left + 'px';
             
-            // 回显状态
             document.getElementById('tool-color').value = obj.fill;
             document.getElementById('tool-font').value = obj.fontFamily;
             document.getElementById('tool-bold').classList.toggle('active', obj.fontWeight === 'bold');
-            
-            // 🆕 回显背景色 (如果有背景色，更新选择器；没有则默认黄色)
-            if (obj.backgroundColor) {
-                document.getElementById('tool-bg-color').value = obj.backgroundColor;
-            }
+            if (obj.backgroundColor) document.getElementById('tool-bg-color').value = obj.backgroundColor;
         } else {
             floatBar.style.display = 'none';
         }
     }
-
     canvas.on('selection:created', updateFloatBar);
     canvas.on('selection:updated', updateFloatBar);
     canvas.on('selection:cleared', () => floatBar.style.display='none');
     canvas.on('object:moving', updateFloatBar);
     canvas.on('object:scaling', updateFloatBar);
 
-    // 现有事件
     document.getElementById('tool-bold').onclick = () => {
-        const o = canvas.getActiveObject();
-        if(o) { o.set('fontWeight', o.fontWeight==='bold'?'normal':'bold'); canvas.renderAll(); updateFloatBar(); }
+        const o = canvas.getActiveObject(); if(o) { o.set('fontWeight', o.fontWeight==='bold'?'normal':'bold'); canvas.renderAll(); updateFloatBar(); }
     };
     document.getElementById('tool-del').onclick = () => {
-        const o = canvas.getActiveObjects();
-        if(o.length) { canvas.discardActiveObject(); canvas.remove(...o); canvas.renderAll(); }
+        const o = canvas.getActiveObjects(); if(o.length) { canvas.discardActiveObject(); canvas.remove(...o); canvas.renderAll(); }
     };
     document.getElementById('tool-color').oninput = (e) => {
-        const o = canvas.getActiveObject();
-        if(o) { o.set('fill', e.target.value); canvas.renderAll(); }
+        const o = canvas.getActiveObject(); if(o) { o.set('fill', e.target.value); canvas.renderAll(); }
     };
     document.getElementById('tool-font').onchange = (e) => {
-        const o = canvas.getActiveObject();
-        if(o) { o.set('fontFamily', e.target.value); canvas.renderAll(); }
+        const o = canvas.getActiveObject(); if(o) { o.set('fontFamily', e.target.value); canvas.renderAll(); }
     };
-
-    // 🆕 新增事件：背景色
     document.getElementById('tool-bg-color').oninput = (e) => {
-        const o = canvas.getActiveObject();
-        if(o) { 
-            o.set('backgroundColor', e.target.value); 
-            canvas.renderAll(); 
-        }
+        const o = canvas.getActiveObject(); if(o) { o.set('backgroundColor', e.target.value); canvas.renderAll(); }
     };
-
-    // 🆕 新增事件：清除背景
     document.getElementById('tool-bg-clear').onclick = () => {
-        const o = canvas.getActiveObject();
-        if(o) { 
-            o.set('backgroundColor', ''); // 设置为空字符串即可移除背景
-            canvas.renderAll(); 
-        }
+        const o = canvas.getActiveObject(); if(o) { o.set('backgroundColor', ''); canvas.renderAll(); }
     };
 });
 </script>
