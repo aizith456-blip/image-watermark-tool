@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>水印编辑器 v14.0 (多图预览版)</title>
+    <title>水印编辑器 v15.0 (完美回退+列表管理)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&family=Noto+Serif+SC:wght@700&family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
@@ -12,41 +12,70 @@
         body { font-family: 'Noto Sans SC', sans-serif; margin: 0; height: 100vh; overflow: hidden; background-color: #f4f6f8; }
         .layout { display: flex; height: 100%; }
         
-        /* 工作区改为 Flex Column，以便放置缩略图栏 */
+        /* 工作区布局调整：垂直排列，上方是画布，下方是列表 */
         .workspace { flex: 1; display: flex; flex-direction: column; background-color: #e0e0e0; background-image: radial-gradient(#aaa 1px, transparent 1px); background-size: 20px 20px; position: relative; }
         
-        /* 画布容器占据剩余空间 */
-        .canvas-area { flex: 1; display: flex; justify-content: center; align-items: center; overflow: auto; width: 100%; position: relative; }
+        .canvas-container-wrapper { flex: 1; display: flex; justify-content: center; align-items: center; overflow: auto; width: 100%; }
         .canvas-box { box-shadow: 0 8px 24px rgba(0,0,0,0.15); background: white; }
 
-        /* 🆕 新增：底部缩略图栏 */
-        .thumbnail-bar { 
-            height: 100px; 
-            background: #fff; 
-            border-top: 1px solid #ccc; 
-            display: flex; 
-            align-items: center; 
-            padding: 0 15px; 
-            gap: 12px; 
-            overflow-x: auto; 
-            flex-shrink: 0; 
+        /* 🆕 新增：底部图片列表栏 */
+        .preview-bar {
+            height: 110px;
+            background: #fff;
+            border-top: 1px solid #ccc;
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
+            gap: 15px;
+            overflow-x: auto;
+            flex-shrink: 0;
             z-index: 20;
             box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
         }
-        .thumb-item { 
-            height: 70px; 
-            width: 70px;
-            border-radius: 6px; 
-            cursor: pointer; 
-            object-fit: cover; 
-            border: 3px solid transparent; 
+        
+        .preview-item {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            flex-shrink: 0;
+            border-radius: 6px;
+            border: 2px solid transparent;
+            cursor: pointer;
             transition: all 0.2s;
+        }
+        .preview-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 4px;
             background: #eee;
         }
-        .thumb-item:hover { transform: scale(1.05); }
-        .thumb-item.active { border-color: #007bff; box-shadow: 0 0 8px rgba(0,123,255,0.4); }
+        .preview-item.active { border-color: #007bff; transform: translateY(-2px); }
+        .preview-item:hover .btn-delete { opacity: 1; }
+        
+        /* 删除按钮 */
+        .btn-delete {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            width: 20px;
+            height: 20px;
+            background: #ff4d4f;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            opacity: 0; /* 默认隐藏，鼠标悬停显示 */
+            transition: opacity 0.2s;
+            z-index: 5;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
 
-        /* 侧边栏保持不变 */
+        /* 侧边栏及其他样式保持 v13.5 原样 */
         .sidebar { width: 320px; background: white; border-left: 1px solid #ddd; display: flex; flex-direction: column; padding: 20px; z-index: 10; box-shadow: -2px 0 10px rgba(0,0,0,0.05); }
         h2 { margin: 0 0 20px 0; font-size: 18px; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; color: #333; }
         .panel { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px dashed #eee; }
@@ -61,7 +90,7 @@
         .footer { margin-top: auto; }
         #download-link { display: block; text-align: center; margin-top: 10px; font-size: 13px; color: #007bff; text-decoration: none; }
 
-        /* 悬浮工具栏保持不变 */
+        /* 悬浮工具栏 (v13.5版) */
         .floating-tools { position: absolute; display: none; background: white; padding: 6px 10px; border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); z-index: 999; border: 1px solid #eee; animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
         .tool-row { display: flex; align-items: center; gap: 8px; }
@@ -73,22 +102,17 @@
         .color-wrap:hover { background: #f0f0f0; }
         .color-label { font-size: 10px; position: absolute; pointer-events: none; color: #555; font-weight: bold; z-index: 2; text-shadow: 0 0 2px white; }
         input[type="color"] { width: 150%; height: 150%; border: none; padding: 0; background: none; cursor: pointer; position: absolute; top: -25%; left: -25%; z-index: 1; }
-        
-        /* 滚动条美化 */
-        .thumbnail-bar::-webkit-scrollbar { height: 8px; }
-        .thumbnail-bar::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
-        .thumbnail-bar::-webkit-scrollbar-track { background: #f5f5f5; }
     </style>
 </head>
 <body>
 
 <div class="layout">
     <div class="workspace" id="workspace">
-        <div class="canvas-area">
+        <div class="canvas-container-wrapper">
             <div class="canvas-box">
                 <canvas id="c"></canvas>
             </div>
-            <!-- 悬浮工具栏 -->
+            
             <div id="float-bar" class="floating-tools">
                 <div class="tool-row">
                     <select id="tool-font" style="width: 90px; padding: 4px; font-size: 12px; border:1px solid #eee;">
@@ -114,11 +138,10 @@
                 </div>
             </div>
         </div>
-        
-        <!-- 🆕 底部缩略图栏 -->
-        <div class="thumbnail-bar" id="thumbnail-bar">
-            <!-- JS 动态填充图片 -->
-            <span style="color:#999; font-size:13px; width:100%; text-align:center;">暂无图片，请在右侧上传</span>
+
+        <!-- 🆕 底部图片列表栏 -->
+        <div class="preview-bar" id="preview-bar">
+            <span style="color:#999; font-size:13px; width:100%; text-align:center;">请先添加图片</span>
         </div>
     </div>
 
@@ -126,10 +149,10 @@
         <h2>批量水印 Pro</h2>
 
         <div class="panel">
-            <span class="panel-label">1. 上传图片</span>
+            <span class="panel-label">1. 上传图片 (支持多选)</span>
             <input type="file" id="file-input" accept="image/*" multiple style="display:none">
             <button class="btn" onclick="document.getElementById('file-input').click()">
-                📂 添加图片 / 批量
+                📂 添加/追加图片
             </button>
         </div>
 
@@ -164,58 +187,122 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // --- 1. 初始化 Fabric ---
+    // 1. 初始化 Fabric (保留 v13.5 设置)
     const canvas = new fabric.Canvas('c', {
-        width: 500, height: 400, backgroundColor: '#fff', preserveObjectStacking: true 
+        width: 500, height: 400,
+        backgroundColor: '#fff',
+        preserveObjectStacking: true 
     });
 
+    // 元素引用
     const fileInput = document.getElementById('file-input');
-    const thumbBar = document.getElementById('thumbnail-bar');
+    const previewBar = document.getElementById('preview-bar');
     const btn34 = document.getElementById('btn-34');
     const fillSelect = document.getElementById('fill-mode');
     const btnText = document.getElementById('btn-text');
     const btnProcess = document.getElementById('btn-process');
     const downloadLink = document.getElementById('download-link');
     
-    let originalFiles = [];
+    // 全局状态
+    let allFiles = []; // 存储所有文件对象
+    let currentFileIndex = -1; // 当前预览的文件索引
     let is3to4Mode = false;
     let previewScale = 1;
-    let currentFileIndex = 0; // 当前选中的图片索引
 
-    // --- 🆕 重构：加载指定图片到画布 ---
-    function loadPreviewImage(index) {
-        if (!originalFiles[index]) return;
-        currentFileIndex = index;
+    // --- 🆕 图片列表管理逻辑 ---
+
+    // 渲染底部列表
+    function renderPreviewBar() {
+        previewBar.innerHTML = '';
         
-        // 更新缩略图选中状态
-        const thumbs = document.querySelectorAll('.thumb-item');
-        thumbs.forEach((t, i) => {
-            if (i === index) t.classList.add('active');
-            else t.classList.remove('active');
-        });
+        if (allFiles.length === 0) {
+            previewBar.innerHTML = '<span style="color:#999; font-size:13px; width:100%; text-align:center;">请先添加图片</span>';
+            btnProcess.disabled = true;
+            btnProcess.textContent = '🚀 开始处理';
+            canvas.clear();
+            return;
+        }
 
-        // 核心逻辑：加载图片
-        const file = originalFiles[index];
+        btnProcess.disabled = false;
+        btnProcess.textContent = `处理 ${allFiles.length} 张图片`;
+
+        allFiles.forEach((file, index) => {
+            const div = document.createElement('div');
+            div.className = `preview-item ${index === currentFileIndex ? 'active' : ''}`;
+            
+            const img = document.createElement('img');
+            img.src = URL.createObjectURL(file);
+            
+            // 点击切换图片
+            div.onclick = (e) => {
+                if(e.target.className !== 'btn-delete') {
+                    loadImagesToCanvas(index);
+                }
+            };
+
+            // 删除按钮
+            const delBtn = document.createElement('div');
+            delBtn.className = 'btn-delete';
+            delBtn.textContent = '×';
+            delBtn.onclick = (e) => {
+                e.stopPropagation(); // 防止触发切换
+                removeImage(index);
+            };
+
+            div.appendChild(img);
+            div.appendChild(delBtn);
+            previewBar.appendChild(div);
+        });
+    }
+
+    // 删除图片逻辑
+    function removeImage(index) {
+        allFiles.splice(index, 1);
+        // 如果删除的是当前正在看的，或者删除了前面的，需要修正 index
+        if (allFiles.length === 0) {
+            currentFileIndex = -1;
+            canvas.clear();
+        } else if (index === currentFileIndex) {
+            // 删了当前的，展示第一张
+            loadImagesToCanvas(0);
+        } else if (index < currentFileIndex) {
+            // 删了前面的，当前索引减1
+            currentFileIndex--;
+            renderPreviewBar(); // 仅重绘高亮
+        } else {
+            renderPreviewBar();
+        }
+        renderPreviewBar();
+    }
+
+    // --- 核心：加载图片到画布 (逻辑源自 v13.5 的 fileInput.onchange) ---
+    function loadImagesToCanvas(index) {
+        if (!allFiles[index]) return;
+        currentFileIndex = index;
+        renderPreviewBar(); // 更新高亮
+
+        const file = allFiles[index];
         const reader = new FileReader();
+        
         reader.onload = (f) => {
             const imgObj = new Image();
             imgObj.src = f.target.result;
             
             imgObj.onload = () => {
-                // 保存现有的水印对象（如果有）
-                // 这样切换图片时，你刚才打的字不会消失
+                // 保存已有的文字水印 (这是唯一的新增便利功能)
                 const existingObjects = canvas.getObjects();
                 
-                // 重置画布状态，但为了"3:4"逻辑的稳定性，每次切换图片我们都重置回原始模式
-                // 除非你想做非常复杂的动态计算，否则重置是最稳的
+                // *** 彻底重置 3:4 状态，确保逻辑正确 ***
                 is3to4Mode = false;
                 btn34.textContent = "📐 改为 3:4";
                 btn34.disabled = false;
                 fillSelect.disabled = false;
+                downloadLink.textContent = '';
                 
-                // 清空并重新设置尺寸
                 const w = imgObj.width;
                 const h = imgObj.height;
+
+                // 计算缩放
                 const maxW = 800, maxH = 600;
                 const scaleX = maxW / w;
                 const scaleY = maxH / h;
@@ -224,20 +311,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 const finalW = w * previewScale;
                 const finalH = h * previewScale;
 
-                // 我们使用 clear() 来清除背景，但马上把对象加回来
-                canvas.clear(); 
+                // 设置画布
                 canvas.setWidth(finalW);
                 canvas.setHeight(finalH);
                 canvas.setBackgroundColor('#fff', canvas.renderAll.bind(canvas));
 
                 const fabricImg = new fabric.Image(imgObj, {
-                    left: finalW / 2, top: finalH / 2,
-                    originX: 'center', originY: 'center',
-                    scaleX: previewScale, scaleY: previewScale
+                    left: finalW / 2,
+                    top: finalH / 2,
+                    originX: 'center',
+                    originY: 'center',
+                    scaleX: previewScale,
+                    scaleY: previewScale
                 });
                 
+                // 设置背景
                 canvas.setBackgroundImage(fabricImg, () => {
-                    // 恢复水印对象
+                    // 恢复水印
                     if (existingObjects.length > 0) {
                         canvas.add(...existingObjects);
                     }
@@ -248,31 +338,25 @@ document.addEventListener('DOMContentLoaded', () => {
         reader.readAsDataURL(file);
     }
 
-    // --- 2. 图片上传与缩略图生成 ---
+    // 2. 图片上传 (修改为追加模式)
     fileInput.onchange = (e) => {
         if (!e.target.files.length) return;
-        originalFiles = Array.from(e.target.files);
+        // 将新文件追加到数组
+        const newFiles = Array.from(e.target.files);
+        allFiles = allFiles.concat(newFiles);
         
-        // UI 重置
-        downloadLink.textContent = '';
-        btnProcess.disabled = false;
-        btnProcess.textContent = `处理 ${originalFiles.length} 张图片`;
-        thumbBar.innerHTML = ''; // 清空旧缩略图
-
-        // 生成缩略图
-        originalFiles.forEach((file, idx) => {
-            const img = document.createElement('img');
-            img.src = URL.createObjectURL(file);
-            img.className = 'thumb-item';
-            img.onclick = () => loadPreviewImage(idx); // 点击切换
-            thumbBar.appendChild(img);
-        });
-
-        // 默认加载第一张
-        loadPreviewImage(0);
+        // 如果是首次添加，默认选中第一张
+        if (currentFileIndex === -1 && allFiles.length > 0) {
+            loadImagesToCanvas(0);
+        } else {
+            renderPreviewBar(); // 仅刷新列表
+        }
+        
+        // 清空 input 允许重复上传相同文件
+        fileInput.value = '';
     };
 
-    // --- 3. 智能边缘取色 (不变) ---
+    // --- 3. 智能吸色 (v13.5 原版) ---
     function getSmartColor(imgElem) {
         const c = document.createElement('canvas');
         const ctx = c.getContext('2d');
@@ -289,7 +373,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return `rgb(${~~(r/count)}, ${~~(g/count)}, ${~~(b/count)})`;
     }
 
-    // --- 4. 修改比例 (不变) ---
+    // --- 4. 修改比例 (v13.5 原版逻辑 - 严格保证) ---
     btn34.onclick = () => {
         if (is3to4Mode || !canvas.backgroundImage) return;
         
@@ -298,42 +382,59 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentH = canvas.height;
         const targetRatio = 3/4;
         
-        let newW = currentW, newH = currentH;
+        let newW = currentW;
+        let newH = currentH;
 
-        if (currentW / currentH > targetRatio) newH = currentW / targetRatio;
-        else newW = currentH * targetRatio;
+        // 计算新尺寸
+        if (currentW / currentH > targetRatio) {
+            newH = currentW / targetRatio;
+        } else {
+            newW = currentH * targetRatio;
+        }
 
         let color = fillSelect.value;
-        if (color === 'smart') color = getSmartColor(bgImg.getElement());
+        if (color === 'smart') {
+            color = getSmartColor(bgImg.getElement());
+        }
 
+        // *** 关键居中逻辑 ***
         canvas.setWidth(newW);
         canvas.setHeight(newH);
         canvas.setBackgroundColor(color, canvas.renderAll.bind(canvas));
         
-        bgImg.set({ left: newW / 2, top: newH / 2, originX: 'center', originY: 'center' });
+        bgImg.set({
+            left: newW / 2,
+            top: newH / 2,
+            originX: 'center', 
+            originY: 'center'
+        });
+        
         canvas.requestRenderAll();
+        
         is3to4Mode = true;
         btn34.textContent = "✅ 已调整";
         btn34.disabled = true;
         fillSelect.disabled = true;
     };
 
-    // --- 5. 添加文本 (不变) ---
+    // --- 5. 添加文本 (v13.5 原版) ---
     btnText.onclick = () => {
         const text = new fabric.IText('双击编辑文字', {
-            left: canvas.width / 2, top: canvas.height / 2,
+            left: canvas.width / 2,
+            top: canvas.height / 2,
             originX: 'center', originY: 'center',
             fontFamily: "'Noto Sans SC', sans-serif",
             fontSize: Math.max(20, canvas.width / 15),
             fill: '#ffffff',
             shadow: 'rgba(0,0,0,0.5) 2px 2px 4px',
-            cornerColor: '#007bff', cornerStyle: 'circle'
+            cornerColor: '#007bff',
+            cornerStyle: 'circle'
         });
         canvas.add(text);
         canvas.setActiveObject(text);
     };
 
-    // --- 6. 处理导出 (不变) ---
+    // --- 6. 处理导出 (修改为遍历 allFiles) ---
     btnProcess.onclick = async () => {
         canvas.discardActiveObject().renderAll();
         btnProcess.disabled = true;
@@ -344,16 +445,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const pW = canvas.width;
         const fillMode = fillSelect.value;
 
-        for(let i=0; i<originalFiles.length; i++) {
-            const file = originalFiles[i];
-            btnProcess.textContent = `⏳ 处理中... ${i+1}/${originalFiles.length}`;
+        // 使用 allFiles 数组
+        for(let i=0; i<allFiles.length; i++) {
+            const file = allFiles[i];
+            btnProcess.textContent = `⏳ 处理中... ${i+1}/${allFiles.length}`;
+            
             try {
-                // 如果当前选中的是这张图，且已经调整了3:4，我们直接用当前的模式
-                // 但批量处理时，通常我们希望应用当前预览的"设置"到所有图片
-                // 这里为了稳健，我们沿用之前的逻辑：对每张图重新计算
                 const blob = await processImage(file, watermarks, is3to4Mode, fillMode, pW);
                 zip.file(`watermark_${file.name}`, blob);
-            } catch(e) { console.error(e); }
+            } catch(e) {
+                console.error(e);
+            }
         }
 
         btnProcess.textContent = "📦 正在打包...";
@@ -368,6 +470,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
+    // 单张处理逻辑 (v13.5 原版)
     function processImage(file, watermarks, do34, fillMode, previewWidth) {
         return new Promise(resolve => {
             const reader = new FileReader();
@@ -375,25 +478,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 const img = new Image();
                 img.onload = () => {
                     let w = img.width, h = img.height;
+                    
                     if(do34) {
                         const r = 3/4;
-                        if(w/h > r) h = w/r; else w = h*r;
+                        if(w/h > r) h = w/r;
+                        else w = h*r;
                     }
+
                     const vc = new fabric.StaticCanvas(null, {width: w, height: h});
                     let bgC = null;
-                    if(do34) bgC = (fillMode === 'smart') ? getSmartColor(img) : fillMode;
+                    if(do34) {
+                        bgC = (fillMode === 'smart') ? getSmartColor(img) : fillMode;
+                    }
                     vc.backgroundColor = bgC;
+
                     const bg = new fabric.Image(img, {
                         left: w/2, top: h/2, originX:'center', originY:'center'
                     });
                     vc.add(bg);
+
                     const scale = w / previewWidth;
                     if(watermarks.length) {
                         watermarks.forEach(wm => {
                             wm.clone(cloned => {
                                 cloned.set({
-                                    left: wm.left * scale, top: wm.top * scale,
-                                    scaleX: wm.scaleX * scale, scaleY: wm.scaleY * scale
+                                    left: wm.left * scale,
+                                    top: wm.top * scale,
+                                    scaleX: wm.scaleX * scale,
+                                    scaleY: wm.scaleY * scale
                                 });
                                 vc.add(cloned);
                             });
@@ -411,25 +523,20 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- 7. 悬浮工具栏 (不变) ---
+    // --- 7. 悬浮工具栏 (v13.5 + 背景色功能) ---
     const floatBar = document.getElementById('float-bar');
+    
     function updateFloatBar() {
         const obj = canvas.getActiveObject();
         if (obj && obj.type === 'i-text') {
             floatBar.style.display = 'block';
-            const bound = obj.getBoundingRect();
-            const containerRect = document.querySelector('.canvas-box').getBoundingClientRect();
-            // 简单的相对定位
-            // 注意：因为现在有了滚动条，定位可能需要微调，但Fabric通常处理得很好
-            // 我们这里简化：根据对象在canvas内的坐标来定
-            // 因为floatBar是绝对定位在workspace内(relative)
-            // 我们需要获取对象相对于workspace的坐标
             
-            // 更简单的方案：Fabric事件提供的 transform 或者 pointer
-            // 这里沿用之前的逻辑，微调CSS定位
+            const bound = obj.getBoundingRect();
             const toolbarH = floatBar.offsetHeight || 40;
+            
             let top = bound.top - toolbarH - 10;
             let left = bound.left + (bound.width/2) - (floatBar.offsetWidth/2);
+            
             if(top < 0) top = bound.top + bound.height + 10;
             if(left < 0) left = 10;
             
@@ -444,6 +551,7 @@ document.addEventListener('DOMContentLoaded', () => {
             floatBar.style.display = 'none';
         }
     }
+
     canvas.on('selection:created', updateFloatBar);
     canvas.on('selection:updated', updateFloatBar);
     canvas.on('selection:cleared', () => floatBar.style.display='none');
