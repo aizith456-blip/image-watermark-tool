@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>批量图片加水印工具</title>
     <style>
-        /* style.css (v12 - 终极版) */
+        /* style.css (v13 - 稳定版) */
         :root { --primary-color: #28a745; --primary-hover-color: #218838; --border-color: #e0e0e0; --background-color: #f8f9fa; --card-background-color: #ffffff; --text-color: #333; --muted-text-color: #6c757d; --error-color: #dc3545; --font-family: 'Helvetica Neue', Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; }
         body { font-family: var(--font-family); background-color: var(--background-color); color: var(--text-color); margin: 0; padding: 1rem; font-size: 14px; }
         .container { max-width: 1200px; margin: 0 auto; padding: 0; }
@@ -73,7 +73,7 @@
                 <div class="form-group"><label>字体样式</label><div class="toggle-button-group"><button class="toggle-button" id="bold-btn">B</button><button class="toggle-button" id="italic-btn">I</button><button class="toggle-button" id="underline-btn">U</button></div></div>
                 <div class="form-group"><label>对齐方式</label><div class="toggle-button-group"><button class="toggle-button active" id="align-left-btn">左</button><button class="toggle-button" id="align-center-btn">中</button></div></div>
                 <div class="form-group"><label for="rotation">旋转角度 (°)</label><input type="number" id="rotation" value="0" step="1"></div>
-                <div class="form-group"><label for="padding">文本边距 (px)</label><input type="number" id="padding" value="20" min="0"></div>
+                <!-- 移除了致命的 padding 输入框 -->
                 <div class="form-group"><label>背景颜色</label><div class="color-input-container"><input type="color" id="background-color" value="#000000"><input type="text" id="background-color-text" value="#000000"></div></div>
                 <div class="form-group"><label for="background-opacity">背景透明度 (0-1)</label><input type="number" id="background-opacity" value="1" min="0" max="1" step="0.05"></div>
                 <div class="form-group"><label>小红书3:4边框</label><div class="toggle-button-group"><button class="toggle-button" id="redbook-mode-btn">关</button></div></div>
@@ -92,7 +92,6 @@
                         </div>
                     </div>
                 </div>
-                <!-- 修复v11的ID错误 -->
                 <div class="form-group"><label>防识别微调</label><div class="toggle-button-group"><button class="toggle-button" id="tweak-mode-btn">关</button></div></div>
                 <div class="form-group" id="tweak-amount-group" style="display: none;"><label for="tweak-amount">微调强度 (1-10)</label><input type="number" id="tweak-amount" value="2" min="1" max="10" step="1"></div>
                 <div class="form-group"><label for="output-quality">JPG输出质量 (0-1)</label><input type="number" id="output-quality" value="0.92" min="0.1" max="1" step="0.01"></div>
@@ -113,9 +112,9 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
-        const APP_VERSION = "v12 (终极版)";
+        const APP_VERSION = "v13 (稳定版)";
 
-        // --- 共享函数 (v12 - 确保主线程和Worker完全一致) ---
+        // --- 共享函数 ---
         const sharedFunctions = {
             drawWatermark: function(context, watermark) {
                 context.save();
@@ -174,7 +173,6 @@
 
         // --- Web Worker 脚本 ---
         const workerCode = `
-        // 注入共享函数
         const drawWatermark = ${sharedFunctions.drawWatermark.toString()};
         const applyImageTweak = ${sharedFunctions.applyImageTweak.toString()};
 
@@ -219,7 +217,7 @@
         const get = id => document.getElementById(id);
         const versionTag = get('version-tag');
         const dropZone = get('drop-zone'), fileInput = get('file-input'), selectFilesButton = get('select-files-button'), fileListDiv = get('file-list'), canvas = get('canvas'), ctx = canvas.getContext('2d'), processButton = get('process-button'), progressBarContainer = get('progress-bar-container'), progressBar = get('progress-bar'), statusMessage = get('status-message'), downloadSection = get('download-section');
-        const watermarkText = get('watermark-text'), fontSize = get('font-size'), fontColor = get('font-color'), fontColorText = get('font-color-text'), opacity = get('opacity'), rotation = get('rotation'), fontFamily = get('font-family'), padding = get('padding'), backgroundColor = get('background-color'), backgroundColorText = get('background-color-text'), backgroundOpacity = get('background-opacity'), boldBtn = get('bold-btn'), italicBtn = get('italic-btn'), underlineBtn = get('underline-btn'), alignLeftBtn = get('align-left-btn'), alignCenterBtn = get('align-center-btn');
+        const watermarkText = get('watermark-text'), fontSize = get('font-size'), fontColor = get('font-color'), fontColorText = get('font-color-text'), opacity = get('opacity'), rotation = get('rotation'), fontFamily = get('font-family'), /* padding removed */ backgroundColor = get('background-color'), backgroundColorText = get('background-color-text'), backgroundOpacity = get('background-opacity'), boldBtn = get('bold-btn'), italicBtn = get('italic-btn'), underlineBtn = get('underline-btn'), alignLeftBtn = get('align-left-btn'), alignCenterBtn = get('align-center-btn');
         const redbookModeBtn = get('redbook-mode-btn'), redbookOptionsGroup = get('redbook-options-group'), redbookBgModeGroup = get('redbook-bg-mode-group'), redbookBackgroundColor = get('redbook-background-color'), redbookBackgroundColorText = get('redbook-background-color-text');
         const tweakModeBtn = get('tweak-mode-btn'), tweakAmountGroup = get('tweak-amount-group'), tweakAmount = get('tweak-amount'), outputQuality = get('output-quality');
 
@@ -320,7 +318,7 @@
         }
 
         function addDefaultWatermark() { 
-            const wm = { text: '洋宝儿影视', x: 150, y: 150, width: 0, height: 0, fontSize: 40, fontFamily: 'SimHei', fontColor: '#FFFFFF', opacity: 0.5, rotation: 0, padding: 20, backgroundColor: '#000000', backgroundOpacity: 1, isBold: false, isItalic: false, isUnderline: false, textAlign: 'left' };
+            const wm = { text: '洋宝儿影视', x: 150, y: 150, width: 0, height: 0, fontSize: 40, fontFamily: 'SimHei', fontColor: '#FFFFFF', opacity: 0.5, rotation: 0, padding: 20, /* padding is now a fixed value */ backgroundColor: '#000000', backgroundOpacity: 1, isBold: false, isItalic: false, isUnderline: false, textAlign: 'left' };
             autoFitWatermarkBox(wm);
             watermarks.push(wm);
             selectedWatermarkIndex = 0; 
@@ -334,7 +332,7 @@
             wm.opacity = parseFloat(opacity.value); 
             wm.rotation = parseInt(rotation.value, 10); 
             wm.fontFamily = fontFamily.value; 
-            wm.padding = parseInt(padding.value, 10); 
+            wm.padding = 20; // Hardcoded padding value
             wm.backgroundColor = backgroundColor.value; 
             wm.backgroundOpacity = parseFloat(backgroundOpacity.value); 
             wm.isBold = boldBtn.classList.contains('active'); 
@@ -353,7 +351,7 @@
             opacity.value = wm.opacity; 
             rotation.value = wm.rotation; 
             fontFamily.value = wm.fontFamily; 
-            padding.value = wm.padding; 
+            // no padding control to update
             backgroundColor.value = backgroundColorText.value = wm.backgroundColor; 
             backgroundOpacity.value = wm.backgroundOpacity; 
             boldBtn.classList.toggle('active', wm.isBold); 
@@ -374,7 +372,8 @@
             canvas.addEventListener('mousemove', handleCanvasMouseMove);
             canvas.addEventListener('mouseup', handleCanvasMouseUp);
             canvas.addEventListener('mouseleave', handleCanvasMouseUp);
-            [watermarkText, fontSize, opacity, rotation, fontFamily, padding, backgroundOpacity, outputQuality, tweakAmount].forEach(c => c.addEventListener('input', updateWatermarkFromControls));
+            // Removed 'padding' from this list to prevent the crash
+            [watermarkText, fontSize, opacity, rotation, fontFamily, backgroundOpacity, outputQuality, tweakAmount].forEach(c => c.addEventListener('input', updateWatermarkFromControls));
             [['fontColor', 'fontColorText'], ['backgroundColor', 'backgroundColorText'], ['redbookBackgroundColor', 'redbookBackgroundColorText']].forEach(([pickerId, textId]) => {
                 const picker = get(pickerId), text = get(textId);
                 picker.addEventListener('input', () => { text.value = picker.value.toUpperCase(); (pickerId.startsWith('redbook')) ? drawCanvas() : updateWatermarkFromControls(); });
