@@ -3,260 +3,502 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>水印编辑器 v11.0 (智能边缘填充)</title>
+    <title>水印编辑器 Pro (智能填充修复版)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     
+    <!-- 引入字体 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Sans+SC:wght@400;700&family=Noto+Serif+SC:wght@400;700&family=ZCOOL+KuaiLe&family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
     
     <style>
-        /* ...大部分CSS无变化... */
         body { font-family: 'Noto Sans SC', sans-serif; margin: 0; height: 100vh; overflow: hidden; background-color: #f0f2f5; }
-        .editor-container { display: flex; height: 100%; }
-        .workspace { flex-grow: 1; display: flex; justify-content: center; align-items: center; padding: 2rem; position: relative; overflow: auto; }
-        .canvas-container { box-shadow: 0 8px 16px rgba(0,0,0,0.15); background-color: white; }
-        .sidebar { width: 280px; flex-shrink: 0; background-color: #fff; box-shadow: -2px 0 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; padding: 1.5rem; }
-        h2 { font-size: 1.2rem; margin-top: 0; padding-bottom: 0.8rem; border-bottom: 1px solid #eee; }
-        .sidebar-button { /* ... */ }
-        .sidebar-button:disabled { /* ... */ }
         
-        /* 新增：3:4调整区域的样式 */
-        .resize-control-group { display: flex; margin-bottom: 1rem; gap: 8px; }
-        #resize-3-4-btn { flex-grow: 1; margin-bottom: 0; }
-        #fill-mode-select { padding: 12px 8px; font-size: 1rem; border: 1px solid #ddd; border-radius: 8px; background-color: #f8f9fa; }
+        /* 布局 */
+        .editor-container { display: flex; height: 100%; }
+        .workspace { flex-grow: 1; display: flex; justify-content: center; align-items: center; padding: 2rem; position: relative; overflow: hidden; background-color: #e4e5e6; background-image: radial-gradient(#ccc 1px, transparent 1px); background-size: 20px 20px; }
+        .canvas-wrapper { box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        
+        /* 侧边栏 */
+        .sidebar { width: 300px; flex-shrink: 0; background-color: #fff; border-left: 1px solid #e0e0e0; display: flex; flex-direction: column; padding: 1.5rem; z-index: 10; }
+        h2 { font-size: 1.2rem; margin-top: 0; margin-bottom: 1.5rem; color: #333; border-bottom: 2px solid #f0f0f0; padding-bottom: 0.8rem; }
+        
+        /* 按钮通用样式 */
+        .btn { display: flex; align-items: center; justify-content: center; width: 100%; padding: 12px; font-size: 15px; border: 1px solid #ddd; border-radius: 8px; background-color: #fff; cursor: pointer; transition: all 0.2s; color: #333; margin-bottom: 12px; font-weight: 500; }
+        .btn:hover:not(:disabled) { background-color: #f8f9fa; border-color: #bbb; transform: translateY(-1px); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .btn:disabled { background-color: #f5f5f5; color: #bbb; cursor: not-allowed; border-color: #eee; }
+        .btn .icon { margin-right: 8px; font-size: 1.1em; }
+        
+        .btn-primary { background-color: #007bff; color: white; border: none; }
+        .btn-primary:hover:not(:disabled) { background-color: #0069d9; color: white; }
+        
+        /* 控件组 */
+        .control-group { margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid #f0f0f0; }
+        .control-group:last-child { border-bottom: none; }
+        .group-title { font-size: 0.85rem; color: #888; margin-bottom: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
 
-        /* 其他样式 */
+        /* 3:4调整区域 */
+        .resize-row { display: flex; gap: 8px; }
+        #fill-mode-select { padding: 0 8px; border-radius: 8px; border: 1px solid #ddd; background: #f8f9fa; font-size: 14px; cursor: pointer; outline: none; }
+        
+        /* 底部操作区 */
         .sidebar-footer { margin-top: auto; }
-        .process-button { /* ... */ }
+        #download-area { margin-top: 1rem; text-align: center; font-size: 0.9rem; }
+        #download-area a { color: #007bff; text-decoration: none; font-weight: bold; }
+        #download-area a:hover { text-decoration: underline; }
+        
         #bg-image-input { display: none; }
-        .floating-toolbar { /* ... */ }
+
+        /* 悬浮工具栏 */
+        .floating-toolbar { position: absolute; display: none; background: white; padding: 6px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); z-index: 1000; border: 1px solid rgba(0,0,0,0.05); align-items: center; gap: 6px; animation: fadeIn 0.2s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .toolbar-btn { background: transparent; border: none; border-radius: 4px; width: 32px; height: 32px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; color: #555; transition: background 0.2s; }
+        .toolbar-btn:hover { background-color: #f0f0f0; color: #000; }
+        .toolbar-btn.active { background-color: #e3f2fd; color: #007bff; }
+        
+        .toolbar-select { border: 1px solid #ddd; border-radius: 4px; padding: 4px 8px; font-size: 13px; outline: none; max-width: 110px; }
+        .separator { width: 1px; height: 20px; background-color: #eee; margin: 0 4px; }
+        
+        .color-wrapper { position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 4px; cursor: pointer; }
+        .color-wrapper:hover { background-color: #f0f0f0; }
+        .color-preview { width: 18px; height: 18px; border-radius: 50%; border: 1px solid #ddd; pointer-events: none; }
+        .color-input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
     </style>
 </head>
 <body>
     <div class="editor-container">
         <main class="workspace" id="workspace">
-            <canvas id="c"></canvas>
-            <!-- 浮动工具栏移到main内部，避免被sidebar遮挡 -->
-            <div id="floating-toolbar" class="floating-toolbar" style="display:none; position: absolute; z-index: 1000;">
-                 <!-- 工具栏内容将在JS中动态填充 -->
+            <div class="canvas-wrapper">
+                <canvas id="c"></canvas>
+            </div>
+            <div id="floating-toolbar" class="floating-toolbar">
+                <!-- JS生成内容 -->
             </div>
         </main>
+        
         <aside class="sidebar">
-            <h2>批量加水印</h2>
-            <input type="file" id="bg-image-input" accept="image/*" multiple>
-            <button class="sidebar-button" id="add-image-btn"><span class="icon">🖼️</span> 添加图片</button>
+            <h2>水印编辑器 Pro</h2>
             
-            <!-- 更新：将3:4按钮和填充模式选择组合在一起 -->
-            <div class="resize-control-group">
-                <select id="fill-mode-select" disabled>
-                    <option value="smart">智能边缘</option>
-                    <option value="white">白色</option>
-                    <option value="black">黑色</option>
-                </select>
-                <button class="sidebar-button" id="resize-3-4-btn" disabled><span class="icon">📏</span> 调整为 3:4</button>
+            <div class="control-group">
+                <div class="group-title">第一步：上传</div>
+                <input type="file" id="bg-image-input" accept="image/*" multiple>
+                <button class="btn" id="add-image-btn"><span class="icon">🖼️</span> 选择图片 (支持批量)</button>
             </div>
 
-            <button class="sidebar-button" id="add-text-btn"><span class="icon">A</span> 添加文本</button>
+            <div class="control-group">
+                <div class="group-title">第二步：画布设置</div>
+                <div class="resize-row">
+                    <select id="fill-mode-select" title="背景填充模式" disabled>
+                        <option value="smart">🎨 智能吸色</option>
+                        <option value="white">⬜ 白色填充</option>
+                        <option value="black">⬛ 黑色填充</option>
+                        <option value="#F5F5F5">🌫️ 浅灰填充</option>
+                    </select>
+                    <button class="btn" id="resize-3-4-btn" style="margin-bottom:0;" disabled>
+                        <span class="icon">📏</span> 改为 3:4
+                    </button>
+                </div>
+                <div style="font-size: 12px; color: #999; margin-top: 6px;">*将保留原图完整内容，自动填充背景</div>
+            </div>
+
+            <div class="control-group">
+                <div class="group-title">第三步：添加内容</div>
+                <button class="btn" id="add-text-btn"><span class="icon">🅰️</span> 添加文本</button>
+            </div>
             
             <div class="sidebar-footer">
-                <button class="process-button" id="process-btn" disabled>
-                    <span class="default-text">给多个图片加水印</span>
-                    <span class="processing-text">处理中... (0/0)</span>
+                <button class="btn btn-primary" id="process-btn" disabled>
+                    <span class="default-text">导出图片</span>
+                    <span class="processing-text">处理中...</span>
                 </button>
-                <div id="download-area" style="margin-top: 1rem; font-size: 0.9rem; text-align: center;"></div>
+                <div id="download-area"></div>
             </div>
         </aside>
     </div>
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
-        // ... 常量和元素获取 ...
-        const canvas = new fabric.Canvas('c', { width: 500, height: 400, backgroundColor: '#eee' });
-        const addImageBtn = document.getElementById('add-image-btn');
+        // --- 初始化 ---
+        const MAX_PREVIEW_WIDTH = 800;
+        const MAX_PREVIEW_HEIGHT = 600;
+
+        const canvas = new fabric.Canvas('c', { 
+            width: 600, 
+            height: 450, 
+            backgroundColor: '#ffffff',
+            preserveObjectStacking: true 
+        });
+        
+        const workspace = document.getElementById('workspace');
         const bgImageInput = document.getElementById('bg-image-input');
+        const addImageBtn = document.getElementById('add-image-btn');
         const resize34Btn = document.getElementById('resize-3-4-btn');
-        const fillModeSelect = document.getElementById('fill-mode-select'); // 新增
+        const fillModeSelect = document.getElementById('fill-mode-select');
         const addTextBtn = document.getElementById('add-text-btn');
         const processBtn = document.getElementById('process-btn');
+        const downloadArea = document.getElementById('download-area');
         
         let originalImageFiles = [];
-        let previewScaleFactor = 1;
+        let currentBgImageObject = null;
         let is3to4Mode = false;
-        let currentBgImageObject = null; // 存储当前预览的fabric.Image对象
+        let originalImgWidth = 0;
+        let originalImgHeight = 0;
 
-        // --- 图片加载 ---
+        // --- 1. 图片上传与预览 ---
         addImageBtn.onclick = () => bgImageInput.click();
+        
         bgImageInput.onchange = (e) => {
             if (e.target.files.length > 0) {
                 originalImageFiles = Array.from(e.target.files);
-                // ...
                 const file = originalImageFiles[0]; 
+
+                // 更新按钮状态
+                processBtn.querySelector('.default-text').textContent = 
+                    originalImageFiles.length > 1 ? `批量处理 ${originalImageFiles.length} 张图片` : `保存图片`;
+                downloadArea.innerHTML = '';
+
                 const reader = new FileReader();
                 reader.onload = (f) => {
                     fabric.Image.fromURL(f.target.result, (img) => {
-                        currentBgImageObject = img; // 保存图像对象
-                        // ... 重置画布和状态 ...
+                        // 重置状态
                         canvas.clear();
                         is3to4Mode = false;
-                        // ... 计算预览尺寸 ...
-                        const previewWidth = img.width * previewScaleFactor;
-                        const previewHeight = img.height * previewScaleFactor;
-                        // ... 设置背景和启用按钮 ...
+                        currentBgImageObject = img;
+                        originalImgWidth = img.width;
+                        originalImgHeight = img.height;
+                        
+                        // 计算适合屏幕的缩放比例
+                        const scaleX = MAX_PREVIEW_WIDTH / img.width;
+                        const scaleY = MAX_PREVIEW_HEIGHT / img.height;
+                        const scale = Math.min(scaleX, scaleY, 1); // 不放大，只缩小
+                        
+                        const previewWidth = img.width * scale;
+                        const previewHeight = img.height * scale;
+
                         canvas.setWidth(previewWidth);
                         canvas.setHeight(previewHeight);
-                        canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), { scaleX: previewScaleFactor, scaleY: previewScaleFactor });
+                        
+                        // 设置背景图
+                        img.set({
+                            scaleX: scale,
+                            scaleY: scale,
+                            left: previewWidth / 2,
+                            top: previewHeight / 2,
+                            originX: 'center',
+                            originY: 'center'
+                        });
+                        canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
+                        
+                        // 启用按钮
+                        processBtn.disabled = false;
                         resize34Btn.disabled = false;
-                        fillModeSelect.disabled = false; // 启用填充模式选择
+                        fillModeSelect.disabled = false;
                     });
                 };
                 reader.readAsDataURL(file);
             }
         };
-
-        // --- 智能边缘颜色算法 ---
-        function getEdgeColor(imgObject, callback) {
-            if (!imgObject) {
-                callback('#FFFFFF'); // 默认返回白色
-                return;
-            }
-            // 创建一个临时的小canvas来分析颜色，提高性能
+        
+        // --- 辅助功能：智能取色 ---
+        // 获取图片边缘的平均颜色
+        function getEdgeColor(imgElement, callback) {
             const tempCanvas = document.createElement('canvas');
-            const tempCtx = tempCanvas.getContext('2d');
-            const imgWidth = imgObject.width;
-            const imgHeight = imgObject.height;
-            tempCanvas.width = imgWidth;
-            tempCanvas.height = imgHeight;
+            const ctx = tempCanvas.getContext('2d', { willReadFrequently: true });
+            // 缩小取样以提高性能
+            const w = 50; 
+            const h = 50;
+            tempCanvas.width = w;
+            tempCanvas.height = h;
+            ctx.drawImage(imgElement, 0, 0, w, h);
+
+            const data = ctx.getImageData(0, 0, w, h).data;
+            let r=0, g=0, b=0, count=0;
             
-            // 将fabric图像对象绘制到临时canvas上
-            imgObject.clone(clonedImg => {
-                clonedImg.set({ left: 0, top: 0, angle: 0 }); // 重置位置
-                const virtualCanvas = new fabric.StaticCanvas(tempCanvas);
-                virtualCanvas.add(clonedImg);
-                virtualCanvas.renderAll();
+            // 采样边缘 (Top, Bottom, Left, Right)
+            const sample = (idx) => {
+                r += data[idx]; g += data[idx+1]; b += data[idx+2]; count++;
+            };
 
-                const imageData = tempCtx.getImageData(0, 0, imgWidth, imgHeight).data;
-                let r = 0, g = 0, b = 0, count = 0;
-                const sampleRate = 5; // 每隔5个像素采样一次，提高性能
+            // Top & Bottom rows
+            for(let x=0; x<w; x++) {
+                sample((x) * 4); // Top
+                sample(((h-1)*w + x) * 4); // Bottom
+            }
+            // Left & Right cols (avoid corners twice)
+            for(let y=1; y<h-1; y++) {
+                sample((y*w) * 4); // Left
+                sample((y*w + w-1) * 4); // Right
+            }
 
-                // 采样上下边缘
-                for (let x = 0; x < imgWidth; x += sampleRate) {
-                    // 上边缘
-                    let i = (0 * imgWidth + x) * 4;
-                    r += imageData[i]; g += imageData[i+1]; b += imageData[i+2];
-                    // 下边缘
-                    i = ((imgHeight - 1) * imgWidth + x) * 4;
-                    r += imageData[i]; g += imageData[i+1]; b += imageData[i+2];
-                    count += 2;
-                }
-                // 采样左右边缘
-                for (let y = 0; y < imgHeight; y += sampleRate) {
-                    // 左边缘
-                    let i = (y * imgWidth + 0) * 4;
-                    r += imageData[i]; g += imageData[i+1]; b += imageData[i+2];
-                    // 右边缘
-                    i = (y * imgWidth + (imgWidth - 1)) * 4;
-                    r += imageData[i]; g += imageData[i+1]; b += imageData[i+2];
-                    count += 2;
-                }
-
-                r = ~~(r / count);
-                g = ~~(g / count);
-                b = ~~(b / count);
-
-                callback(`rgb(${r},${g},${b})`);
-            });
+            r = Math.round(r / count);
+            g = Math.round(g / count);
+            b = Math.round(b / count);
+            
+            callback(`rgb(${r},${g},${b})`);
         }
 
-
-        // --- 3:4 比例调整 (已更新) ---
+        // --- 2. 调整为 3:4 (填充模式) ---
         resize34Btn.onclick = () => {
-            if (!canvas.backgroundImage) return;
-            is3to4Mode = true;
+            if (!currentBgImageObject || is3to4Mode) return;
             
+            // 获取当前背景图的状态
+            const bgImg = canvas.backgroundImage;
+            // 注意：我们需要基于当前的画布尺寸来计算新的尺寸，保持视觉连贯性
+            const currentCanvasWidth = canvas.width;
+            const currentCanvasHeight = canvas.height;
+            const targetRatio = 3 / 4;
+            const currentRatio = currentCanvasWidth / currentCanvasHeight;
+            
+            // 获取选择的填充颜色
             const fillMode = fillModeSelect.value;
-            
-            const applyFill = (fillColor) => {
-                const targetRatio = 3 / 4;
-                const bgImg = canvas.backgroundImage;
-                const previewWidth = bgImg.width * previewScaleFactor;
-                const previewHeight = bgImg.height * previewScaleFactor;
-                // ... 计算新画布尺寸 ...
-                let newCanvasWidth, newCanvasHeight;
-                // ...
-                canvas.setWidth(newCanvasWidth);
-                canvas.setHeight(newCanvasHeight);
-                canvas.backgroundColor = fillColor; // 使用传入的颜色
+            const watermarkObjects = canvas.getObjects();
+            canvas.remove(...watermarkObjects); // 暂时移除水印以免位置错乱
+
+            const applyResize = (bgColor) => {
+                let newW, newH;
                 
-                bgImg.set({ /* ...居中... */ });
+                if (currentRatio > targetRatio) {
+                    // 图片太宽（如16:9），需要增加高度（上下加黑边/白边）
+                    newW = currentCanvasWidth;
+                    newH = currentCanvasWidth / targetRatio;
+                } else {
+                    // 图片太高（如9:16），需要增加宽度（左右加边）
+                    newH = currentCanvasHeight;
+                    newW = currentCanvasHeight * targetRatio;
+                }
+
+                // 更新画布尺寸
+                canvas.setWidth(newW);
+                canvas.setHeight(newH);
+                canvas.setBackgroundColor(bgColor, canvas.renderAll.bind(canvas));
+                
+                // 重新居中背景图
+                bgImg.set({
+                    left: newW / 2,
+                    top: newH / 2,
+                    originX: 'center',
+                    originY: 'center'
+                });
+                
+                // 恢复水印
+                canvas.add(...watermarkObjects);
+                
+                // 水印位置修正：因为画布变大了，我们需要决定水印是跟随画布边缘还是跟随图片
+                // FabricJS 默认保持绝对坐标不变。
+                // 如果希望水印相对于图片位置不变，需要调整坐标。
+                // 这里我们保持绝对坐标不变，让用户自己微调，因为通常先Resize再加水印。
+                
                 canvas.renderAll();
+                
+                is3to4Mode = true;
                 resize34Btn.disabled = true;
+                resize34Btn.textContent = "已调整为 3:4";
                 fillModeSelect.disabled = true;
             };
 
             if (fillMode === 'smart') {
-                getEdgeColor(currentBgImageObject, (color) => {
-                    applyFill(color);
-                });
+                getEdgeColor(currentBgImageObject.getElement(), (color) => applyResize(color));
             } else {
-                applyFill(fillMode); // 'white' or 'black'
+                applyResize(fillMode);
             }
         };
 
-        // --- 批量处理与下载 (已更新) ---
-        // processBtn.onclick = ...
-        // 单张图片处理函数 (已更新)
-        function processImage(file, watermarkObjects, scale, apply3to4) {
+        // --- 3. 添加文本 ---
+        addTextBtn.onclick = () => {
+            const text = new fabric.IText('双击编辑文本', {
+                left: canvas.width / 2,
+                top: canvas.height / 2,
+                originX: 'center',
+                originY: 'center',
+                fontFamily: "'Noto Sans SC', sans-serif",
+                fill: '#FFFFFF',
+                fontSize: Math.max(20, canvas.width / 20), // 根据画布大小自动调整字号
+                shadow: 'rgba(0,0,0,0.5) 2px 2px 4px',
+                cornerColor: '#007bff',
+                cornerStyle: 'circle',
+                transparentCorners: false
+            });
+            canvas.add(text);
+            canvas.setActiveObject(text);
+        };
+
+        // --- 4. 导出/批量处理 ---
+        processBtn.onclick = async () => {
+            canvas.discardActiveObject().renderAll();
+            const btnDefaultText = processBtn.querySelector('.default-text');
+            const btnProcessText = processBtn.querySelector('.processing-text');
+            const originalBtnText = btnDefaultText.textContent;
+            
+            processBtn.disabled = true;
+            btnDefaultText.style.display = 'none';
+            btnProcessText.style.display = 'inline';
+
+            const zip = new JSZip();
+            const watermarkObjects = canvas.getObjects(); // 获取所有对象（除了背景）
+            const fillMode = fillModeSelect.value;
+            
+            // 关键：计算预览画布相对于原图的缩放比例，以便将水印坐标映射回原图
+            // 注意：如果进行了3:4调整，canvas尺寸包含了填充区域。
+            // 我们需要一个基准。最好的基准是背景图片本身。
+            const previewBgImg = canvas.backgroundImage;
+            const previewImgScale = previewBgImg.scaleX; // 背景图在预览时的缩放值
+            
+            // 计算预览画布的尺寸（无论是调整前还是调整后）
+            const previewCanvasWidth = canvas.width;
+            const previewCanvasHeight = canvas.height;
+
+            for (let i = 0; i < originalImageFiles.length; i++) {
+                const file = originalImageFiles[i];
+                btnProcessText.textContent = `处理中... (${i + 1}/${originalImageFiles.length})`;
+
+                try {
+                    const dataURL = await processSingleImage(
+                        file, 
+                        watermarkObjects, 
+                        is3to4Mode, 
+                        fillMode,
+                        previewCanvasWidth,
+                        previewCanvasHeight
+                    );
+                    const blob = await (await fetch(dataURL)).blob();
+                    zip.file(file.name, blob);
+                } catch (error) {
+                    console.error(`Skipped ${file.name}:`, error);
+                }
+            }
+            
+            // 打包下载
+            if (originalImageFiles.length === 1) {
+                // 单张直接下载
+                zip.files[originalImageFiles[0].name].async("blob").then(blob => {
+                    downloadBlob(blob, "watermarked_" + originalImageFiles[0].name);
+                    resetProcessBtn(originalBtnText);
+                });
+            } else {
+                // 多张打包ZIP
+                btnProcessText.textContent = '正在打包 ZIP...';
+                zip.generateAsync({ type: "blob" }).then(content => {
+                    downloadBlob(content, "watermarked_images.zip");
+                    resetProcessBtn(originalBtnText);
+                });
+            }
+        };
+
+        function resetProcessBtn(text) {
+            const btnDefaultText = processBtn.querySelector('.default-text');
+            const btnProcessText = processBtn.querySelector('.processing-text');
+            btnDefaultText.textContent = text;
+            btnDefaultText.style.display = 'inline';
+            btnProcessText.style.display = 'none';
+            processBtn.disabled = false;
+        }
+
+        function downloadBlob(blob, filename) {
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.textContent = '点击下载 ' + filename;
+            downloadArea.innerHTML = '';
+            downloadArea.appendChild(link);
+            link.click();
+        }
+
+        // 核心逻辑：处理单张图片并合成
+        function processSingleImage(file, watermarks, apply3to4, fillMode, pCanvasW, pCanvasH) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = (f) => {
-                    fabric.Image.fromURL(f.target.result, (img) => {
+                    const imgEl = new Image();
+                    imgEl.onload = () => {
+                        // 1. 确定最终画布尺寸
+                        let finalW = imgEl.width;
+                        let finalH = imgEl.height;
+                        let finalBgColor = null;
 
-                        const processWithFillColor = (fillColor) => {
-                            let canvasWidth = img.width;
-                            let canvasHeight = img.height;
-                            let finalFillColor = null;
-
-                            if (apply3to4) {
-                                // ... 计算3:4画布尺寸 ...
-                                finalFillColor = fillColor; // 'white', 'black', or the smart color
+                        if (apply3to4) {
+                            const targetRatio = 3/4;
+                            const imgRatio = finalW / finalH;
+                            if (imgRatio > targetRatio) {
+                                // 宽图，定宽，增高
+                                finalH = finalW / targetRatio;
+                            } else {
+                                // 高图，定高，增宽
+                                finalW = finalH * targetRatio;
                             }
+                        }
 
-                            const virtualCanvas = new fabric.StaticCanvas(null, {
-                                width: canvasWidth, height: canvasHeight, backgroundColor: finalFillColor
+                        // 2. 确定背景色
+                        const doRender = (bgColor) => {
+                            const vCanvas = new fabric.StaticCanvas(null, {
+                                width: finalW, height: finalH, backgroundColor: bgColor
                             });
 
-                            // ... 后续添加图片、克隆水印、导出图片的逻辑完全不变 ...
-                            // ...
-                            resolve(virtualCanvas.toDataURL({ format: 'png', quality: 0.92 }));
+                            // 添加背景图（居中）
+                            const bgInstance = new fabric.Image(imgEl, {
+                                left: finalW / 2,
+                                top: finalH / 2,
+                                originX: 'center',
+                                originY: 'center'
+                            });
+                            vCanvas.add(bgInstance);
+
+                            // 3. 映射水印坐标
+                            // 比例系数 = 最终画布宽度 / 预览画布宽度
+                            // 注意：这种比例映射假设所有批量处理的图片长宽比差异不大，
+                            // 或者用户希望水印相对于画布边缘的位置保持一致。
+                            const scaleFactor = finalW / pCanvasW;
+
+                            if (watermarks.length > 0) {
+                                watermarks.forEach(obj => {
+                                    obj.clone(cloned => {
+                                        cloned.set({
+                                            left: obj.left * scaleFactor,
+                                            top: obj.top * scaleFactor,
+                                            scaleX: obj.scaleX * scaleFactor,
+                                            scaleY: obj.scaleY * scaleFactor,
+                                        });
+                                        vCanvas.add(cloned);
+                                        // 如果是最后一个对象，渲染并导出
+                                        if (vCanvas.getObjects().length === watermarks.length + 1) {
+                                            vCanvas.renderAll();
+                                            resolve(vCanvas.toDataURL({ format: 'jpeg', quality: 0.9 }));
+                                        }
+                                    });
+                                });
+                            } else {
+                                vCanvas.renderAll();
+                                resolve(vCanvas.toDataURL({ format: 'jpeg', quality: 0.9 }));
+                            }
                         };
 
                         if (apply3to4) {
-                            const fillMode = fillModeSelect.value;
                             if (fillMode === 'smart') {
-                                getEdgeColor(img, (color) => {
-                                    processWithFillColor(color);
-                                });
+                                getEdgeColor(imgEl, color => doRender(color));
                             } else {
-                                processWithFillColor(fillMode);
+                                doRender(fillMode);
                             }
                         } else {
-                            processWithFillColor(null); // 不应用3:4，则不填充颜色
+                            doRender(null);
                         }
-                    });
+                    };
+                    imgEl.onerror = reject;
+                    imgEl.src = f.target.result;
                 };
-                reader.onerror = reject;
                 reader.readAsDataURL(file);
             });
         }
 
-        // --- 其他UI和工具栏逻辑 ---
-        // (此部分代码与上一版相同，为节省篇幅已省略，请直接复用上一版的完整代码)
-        // addTextBtn.onclick = ...
-        // processBtn.onclick = ...
-        // 浮动工具栏相关的所有代码...
-    });
-    </script>
-</body>
-</html>
-
+        // --- 5. 悬浮工具栏 (UI逻辑) ---
+        const toolbar = document.getElementById('floating-toolbar');
+        // 构建工具栏HTML
+        toolbar.innerHTML = `
+            <select id="tb-font" class="toolbar-select" title="字体"></select>
+            <div class="separator"></div>
+            <button id="tb-bold" class="toolbar-btn" title="加粗"><b>B</b></button>
+            <button id="tb-italic" class="toolbar-btn" title="斜体"><i>I</i></button>
+            <div class="separator"></div>
+            <div class="color-wrapper" title="文字颜色">
+                <div id="tb-color-preview" class="color-preview" style="background: #fff;"></div>
+                <span
