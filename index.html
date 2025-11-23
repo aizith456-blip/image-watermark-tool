@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>批量图片加水印工具</title>
     <style>
-        /* style.css (v9 - 自动包围盒) */
+        /* style.css (v10 - 稳定版) */
         :root { --primary-color: #28a745; --primary-hover-color: #218838; --border-color: #e0e0e0; --background-color: #f8f9fa; --card-background-color: #ffffff; --text-color: #333; --muted-text-color: #6c757d; --error-color: #dc3545; --font-family: 'Helvetica Neue', Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; }
         body { font-family: var(--font-family); background-color: var(--background-color); color: var(--text-color); margin: 0; padding: 1rem; font-size: 14px; }
         .container { max-width: 1200px; margin: 0 auto; padding: 0; }
@@ -72,10 +72,10 @@
                 <div class="form-group"><label for="opacity">文本透明度 (0-1)</label><input type="number" id="opacity" value="0.5" min="0" max="1" step="0.05"></div>
                 <div class="form-group"><label>字体样式</label><div class="toggle-button-group"><button class="toggle-button" id="bold-btn">B</button><button class="toggle-button" id="italic-btn">I</button><button class="toggle-button" id="underline-btn">U</button></div></div>
                 <div class="form-group"><label>对齐方式</label><div class="toggle-button-group"><button class="toggle-button active" id="align-left-btn">左</button><button class="toggle-button" id="align-center-btn">中</button></div></div>
-                <div class="form-group"><label for="rotation">旋转角度 (°)</label><input type="number" id="rotation" value="-30" step="1"></div>
+                <div class="form-group"><label for="rotation">旋转角度 (°)</label><input type="number" id="rotation" value="0" step="1"></div>
                 <div class="form-group"><label for="padding">文本边距 (px)</label><input type="number" id="padding" value="20" min="0"></div>
                 <div class="form-group"><label>背景颜色</label><div class="color-input-container"><input type="color" id="background-color" value="#000000"><input type="text" id="background-color-text" value="#000000"></div></div>
-                <div class="form-group"><label for="background-opacity">背景透明度 (0-1)</label><input type="number" id="background-opacity" value="0.3" min="0" max="1" step="0.05"></div>
+                <div class="form-group"><label for="background-opacity">背景透明度 (0-1)</label><input type="number" id="background-opacity" value="1" min="0" max="1" step="0.05"></div>
                 <div class="form-group"><label>小红书3:4边框</label><div class="toggle-button-group"><button class="toggle-button" id="redbook-mode-btn">关</button></div></div>
                 <div class="form-group" id="redbook-options-group" style="display: none; grid-column: 1 / -1;">
                     <label>边框填充模式</label>
@@ -112,11 +112,73 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
-        const APP_VERSION = "v9";
+        const APP_VERSION = "v10 (稳定版)";
+
+        // --- Web Worker 脚本 (v10 - 核心逻辑修复) ---
         const workerCode = `
-        function wrapText(context, text, maxWidth, fontSize, fontFamily, isBold, isItalic) { const words = text.split(''); let line = '', lines = []; let fontStyle = \`\${isItalic ? 'italic ' : ''}\${isBold ? 'bold ' : ''}\${fontSize}px \${fontFamily}\`; context.font = fontStyle; for (let n = 0; n < words.length; n++) { let testLine = line + words[n]; if (context.measureText(testLine).width > maxWidth && n > 0) { lines.push({ text: line }); line = words[n]; } else { line = testLine; } } lines.push({ text: line }); return { lines, totalTextHeight: lines.length * (fontSize * 1.2) }; }
-        function drawWatermark(context, watermark) { context.save(); const centerX = watermark.x + watermark.width / 2, centerY = watermark.y + watermark.height / 2; context.translate(centerX, centerY); context.rotate(watermark.rotation * Math.PI / 180); context.translate(-centerX, -centerY); if (watermark.backgroundOpacity > 0) { context.globalAlpha = watermark.backgroundOpacity; context.fillStyle = watermark.backgroundColor; context.fillRect(watermark.x, watermark.y, watermark.width, watermark.height); } context.globalAlpha = watermark.opacity; let fontStyle = \`\${watermark.isItalic ? 'italic ' : ''}\${watermark.isBold ? 'bold ' : ''}\${watermark.fontSize}px \${watermark.fontFamily}\`; context.font = fontStyle; context.fillStyle = watermark.fontColor; context.textAlign = watermark.textAlign; context.textBaseline = 'middle'; const wrapped = wrapText(context, watermark.text, watermark.width - watermark.padding * 2, watermark.fontSize, watermark.fontFamily, watermark.isBold, watermark.isItalic); const lineHeight = watermark.fontSize * 1.2; let startTextY = watermark.y + watermark.height / 2 - wrapped.totalTextHeight / 2 + lineHeight / 2; wrapped.lines.forEach((lineObj, i) => { let textX = (watermark.textAlign === 'center') ? (watermark.x + watermark.width / 2) : (watermark.x + watermark.padding); context.fillText(lineObj.text, textX, startTextY + i * lineHeight); if (watermark.isUnderline) { const metrics = context.measureText(lineObj.text); const underlineY = startTextY + i * lineHeight + watermark.fontSize / 2 + 2; let underlineStartX = (watermark.textAlign === 'center') ? (textX - metrics.width / 2) : textX; context.strokeStyle = watermark.fontColor; context.lineWidth = Math.max(1, watermark.fontSize / 20); context.beginPath(); context.moveTo(underlineStartX, underlineY); context.lineTo(underlineStartX + metrics.width, underlineY); context.stroke(); } }); context.restore(); }
+        function wrapText(context, text, maxWidth, fontSize, fontFamily, isBold, isItalic) {
+            const words = text.split(''); let line = '', lines = [];
+            let fontStyle = \`\${isItalic ? 'italic ' : ''}\${isBold ? 'bold ' : ''}\${fontSize}px \${fontFamily}\`;
+            context.font = fontStyle;
+            for (let n = 0; n < words.length; n++) {
+                let testLine = line + words[n];
+                // 修复v9的bug：maxWidth为Infinity时不应换行，但这里要用真实的maxWidth
+                if (maxWidth !== Infinity && context.measureText(testLine).width > maxWidth && n > 0) {
+                    lines.push({ text: line });
+                    line = words[n];
+                } else {
+                    line = testLine;
+                }
+            }
+            lines.push({ text: line });
+            return { lines, totalTextHeight: lines.length * (fontSize * 1.2) };
+        }
+        function drawWatermark(context, watermark) {
+            context.save();
+            const centerX = watermark.x + watermark.width / 2, centerY = watermark.y + watermark.height / 2;
+            context.translate(centerX, centerY);
+            context.rotate(watermark.rotation * Math.PI / 180);
+            context.translate(-centerX, -centerY);
+            
+            // 修复v9的bug：背景和文字的透明度分开设置
+            if (watermark.backgroundOpacity > 0) {
+                context.globalAlpha = watermark.backgroundOpacity; // 仅用于背景
+                context.fillStyle = watermark.backgroundColor;
+                context.fillRect(watermark.x, watermark.y, watermark.width, watermark.height);
+            }
+            
+            context.globalAlpha = watermark.opacity; // 仅用于文字
+            let fontStyle = \`\${watermark.isItalic ? 'italic ' : ''}\${watermark.isBold ? 'bold ' : ''}\${watermark.fontSize}px \${watermark.fontFamily}\`;
+            context.font = fontStyle;
+            context.fillStyle = watermark.fontColor;
+            context.textAlign = watermark.textAlign;
+            context.textBaseline = 'middle';
+            
+            // 修复v9的bug：传递正确的maxWidth用于换行
+            const wrapped = wrapText(context, watermark.text, watermark.width - watermark.padding * 2, watermark.fontSize, watermark.fontFamily, watermark.isBold, watermark.isItalic);
+            
+            const lineHeight = watermark.fontSize * 1.2;
+            let startTextY = watermark.y + watermark.height / 2 - wrapped.totalTextHeight / 2 + lineHeight / 2;
+            
+            wrapped.lines.forEach((lineObj, i) => {
+                let textX = (watermark.textAlign === 'center') ? (watermark.x + watermark.width / 2) : (watermark.x + watermark.padding);
+                context.fillText(lineObj.text, textX, startTextY + i * lineHeight);
+                if (watermark.isUnderline) {
+                    const metrics = context.measureText(lineObj.text);
+                    const underlineY = startTextY + i * lineHeight + watermark.fontSize / 2 + 2;
+                    let underlineStartX = (watermark.textAlign === 'center') ? (textX - metrics.width / 2) : textX;
+                    context.strokeStyle = watermark.fontColor;
+                    context.lineWidth = Math.max(1, watermark.fontSize / 20);
+                    context.beginPath();
+                    context.moveTo(underlineStartX, underlineY);
+                    context.lineTo(underlineStartX + metrics.width, underlineY);
+                    context.stroke();
+                }
+            });
+            context.restore();
+        }
         function applyImageTweak(ctx, canvas, tweakAmount) { const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height); const data = imageData.data; for (let i = 0; i < data.length; i += 4) { const noise = (Math.random() - 0.5) * tweakAmount * 2; data[i] = Math.min(255, Math.max(0, data[i] + noise)); data[i + 1] = Math.min(255, Math.max(0, data[i + 1] + noise)); data[i + 2] = Math.min(255, Math.max(0, data[i + 2] + noise)); } ctx.putImageData(imageData, 0, 0); }
+        
         self.onmessage = async (e) => {
             if (e.data.type === 'processImages') {
                 const { filesData, options } = e.data;
@@ -148,7 +210,7 @@
                         const quality = mimeType === 'image/jpeg' ? options.outputQuality : 1.0;
                         const blob = await tempCanvas.convertToBlob({ type: mimeType, quality: quality });
                         self.postMessage({ type: 'result', name: \`watermarked_\${fileData.name}\`, blob, isLast: i === filesData.length - 1 });
-                    } catch (error) { self.postMessage({ type: 'error', message: \`处理文件 \${fileData.name} 失败: \${error.message}\` }); }
+                    } catch (error) { self.postMessage({ type: 'error', message: \`处理文件 \${fileData.name} 失败: \${error.message}\`, isLast: i === filesData.length - 1 }); }
                 }
             }
         };`;
@@ -164,7 +226,7 @@
 
         let uploadedFiles = [], previewImage = new Image(), watermarks = [], selectedWatermarkIndex = -1, isDragging = false, dragOffsetX, dragOffsetY, isResizing = false;
         let currentRedBookBgMode = 'edge';
-        const tempCtx = document.createElement('canvas').getContext('2d'); // 用于文本测量
+        const tempCtx = document.createElement('canvas').getContext('2d');
 
         function initialize() { 
             versionTag.textContent = APP_VERSION;
@@ -191,7 +253,6 @@
         function loadPreviewImage(src) { 
             previewImage.onload = () => { 
                 watermarks.forEach(wm => {
-                    // 图片加载后，将水印位置重置到中心
                     wm.x = (previewImage.width - wm.width) / 2;
                     wm.y = (previewImage.height - wm.height) / 2;
                 });
@@ -200,7 +261,7 @@
             previewImage.src = src; 
         }
 
-        function getEdgeColor(img) { /* ... (代码无变化) ... */ if (!img.src || img.width === 0) return 'rgba(255,255,255,1)'; const tempCanvas = document.createElement('canvas'), tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true }); tempCanvas.width = img.width; tempCanvas.height = img.height; tempCtx.drawImage(img, 0, 0, img.width, img.height); let r = 0, g = 0, b = 0, count = 0; [ tempCtx.getImageData(0, 0, img.width, 1).data, tempCtx.getImageData(0, img.height - 1, img.width, 1).data, tempCtx.getImageData(0, 0, 1, img.height).data, tempCtx.getImageData(img.width - 1, 0, 1, img.height).data ].forEach(data => { for (let i = 0; i < data.length; i += 4) { r += data[i]; g += data[i+1]; b += data[i+2]; count++; } }); return `rgba(${Math.round(r/count)},${Math.round(g/count)},${Math.round(b/count)},1)`; }
+        function getEdgeColor(img) { if (!img.src || img.width === 0) return 'rgba(255,255,255,1)'; const tempCanvas = document.createElement('canvas'), tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true }); tempCanvas.width = img.width; tempCanvas.height = img.height; tempCtx.drawImage(img, 0, 0, img.width, img.height); let r = 0, g = 0, b = 0, count = 0; [ tempCtx.getImageData(0, 0, img.width, 1).data, tempCtx.getImageData(0, img.height - 1, img.width, 1).data, tempCtx.getImageData(0, 0, 1, img.height).data, tempCtx.getImageData(img.width - 1, 0, 1, img.height).data ].forEach(data => { for (let i = 0; i < data.length; i += 4) { r += data[i]; g += data[i+1]; b += data[i+2]; count++; } }); return `rgba(${Math.round(r/count)},${Math.round(g/count)},${Math.round(b/count)},1)`; }
         
         function drawCanvas() {
             if (!previewImage.src) return;
@@ -227,79 +288,84 @@
             watermarks.forEach((wm, index) => drawWatermark(ctx, wm, index === selectedWatermarkIndex));
         }
 
-        function drawWatermark(context, watermark, isSelected) { 
-            context.save(); 
-            const centerX = watermark.x + watermark.width / 2, centerY = watermark.y + watermark.height / 2; 
-            context.translate(centerX, centerY); 
-            context.rotate(watermark.rotation * Math.PI / 180); 
-            context.translate(-centerX, -centerY); 
-            if (watermark.backgroundOpacity > 0) { context.globalAlpha = watermark.backgroundOpacity; context.fillStyle = watermark.backgroundColor; context.fillRect(watermark.x, watermark.y, watermark.width, watermark.height); } 
-            context.globalAlpha = watermark.opacity; 
-            let fontStyle = `${watermark.isItalic ? 'italic ' : ''}${watermark.isBold ? 'bold ' : ''}${watermark.fontSize}px ${watermark.fontFamily}`; 
-            context.font = fontStyle; 
-            context.fillStyle = watermark.fontColor; 
-            context.textAlign = watermark.textAlign; 
-            context.textBaseline = 'middle'; 
-            const wrapped = wrapText(context, watermark.text, Infinity, watermark.fontSize, watermark.fontFamily, watermark.isBold, watermark.isItalic); 
-            const lineHeight = watermark.fontSize * 1.2; 
-            let startTextY = watermark.y + watermark.height / 2 - wrapped.totalTextHeight / 2 + lineHeight / 2; 
-            wrapped.lines.forEach((lineObj, i) => { 
-                let textX = (watermark.textAlign === 'center') ? (watermark.x + watermark.width / 2) : (watermark.x + watermark.padding); 
-                context.fillText(lineObj.text, textX, startTextY + i * lineHeight); 
-                if (watermark.isUnderline) { 
-                    const metrics = context.measureText(lineObj.text); 
-                    const underlineY = startTextY + i * lineHeight + watermark.fontSize / 2 + 2; 
-                    let underlineStartX = (watermark.textAlign === 'center') ? (textX - metrics.width / 2) : textX; 
-                    context.strokeStyle = watermark.fontColor; 
-                    context.lineWidth = Math.max(1, watermark.fontSize / 20); 
-                    context.beginPath(); 
-                    context.moveTo(underlineStartX, underlineY); 
-                    context.lineTo(underlineStartX + metrics.width, underlineY); 
-                    context.stroke(); 
-                } 
-            }); 
-            if (isSelected) { 
-                context.strokeStyle = 'rgba(0, 123, 255, 0.9)'; 
-                context.lineWidth = 2; 
+        // 使用Web Worker中的同名函数进行绘制，保持主线程和Worker一致
+        const drawWatermark = (context, watermark, isSelected) => {
+            const workerDrawFn = new Function(`return ${workerCode}`)().drawWatermark;
+            workerDrawFn(context, watermark);
+            if (isSelected) {
+                context.save();
+                const centerX = watermark.x + watermark.width / 2, centerY = watermark.y + watermark.height / 2;
+                context.translate(centerX, centerY);
+                context.rotate(watermark.rotation * Math.PI / 180);
+                context.translate(-centerX, -centerY);
+                context.strokeStyle = 'rgba(0, 123, 255, 0.9)';
+                context.lineWidth = 2;
                 context.strokeRect(watermark.x, watermark.y, watermark.width, watermark.height);
-                // 移除了绘制缩放句柄的调用
-            } 
-            context.restore(); 
-        }
-        function wrapText(context, text, maxWidth, fontSize, fontFamily, isBold, isItalic) { const words = text.split(''); let line = '', lines = []; let fontStyle = `${isItalic ? 'italic ' : ''}${isBold ? 'bold ' : ''}${fontSize}px ${fontFamily}`; context.font = fontStyle; for (let n = 0; n < words.length; n++) { let testLine = line + words[n]; if (context.measureText(testLine).width > maxWidth && n > 0 && maxWidth !== Infinity) { lines.push({ text: line }); line = words[n]; } else { line = testLine; } } lines.push({ text: line }); return { lines, totalTextHeight: lines.length * (fontSize * 1.2) }; }
+                context.restore();
+            }
+        };
         
-        // --- 新增：自动调整水印包围盒的函数 ---
         function autoFitWatermarkBox(wm) {
             let fontStyle = `${wm.isItalic ? 'italic ' : ''}${wm.isBold ? 'bold ' : ''}${wm.fontSize}px ${wm.fontFamily}`;
             tempCtx.font = fontStyle;
-            const wrapped = wrapText(tempCtx, wm.text, Infinity, wm.fontSize, wm.fontFamily, wm.isBold, wm.isItalic);
-            const maxWidth = Math.max(...wrapped.lines.map(l => tempCtx.measureText(l.text).width));
+            const lines = wm.text.split('\\n'); // 支持手动换行符
+            const totalTextHeight = lines.length * (wm.fontSize * 1.2);
+            const maxWidth = Math.max(...lines.map(l => tempCtx.measureText(l).width));
             
             const oldCenterX = wm.x + wm.width / 2;
             const oldCenterY = wm.y + wm.height / 2;
 
             wm.width = maxWidth + wm.padding * 2;
-            wm.height = wrapped.totalTextHeight + wm.padding * 2;
+            wm.height = totalTextHeight + wm.padding * 2;
             
-            // 保持中心点不变
             wm.x = oldCenterX - wm.width / 2;
             wm.y = oldCenterY - wm.height / 2;
         }
 
         function addDefaultWatermark() { 
-            const wm = { text: '请勿外传', x: 100, y: 100, width: 0, height: 0, fontSize: 40, fontFamily: 'SimHei', fontColor: '#FFFFFF', opacity: 0.5, rotation: -30, padding: 20, backgroundColor: '#000000', backgroundOpacity: 0.3, isBold: false, isItalic: false, isUnderline: false, textAlign: 'left', textBaseline: 'middle' };
-            autoFitWatermarkBox(wm); // 创建时就计算大小
+            const wm = { text: '请勿外传', x: 150, y: 150, width: 0, height: 0, fontSize: 40, fontFamily: 'SimHei', fontColor: '#FFFFFF', opacity: 0.5, rotation: 0, padding: 20, backgroundColor: '#000000', backgroundOpacity: 1, isBold: false, isItalic: false, isUnderline: false, textAlign: 'left' };
+            autoFitWatermarkBox(wm);
             watermarks.push(wm);
             selectedWatermarkIndex = 0; 
         }
         function updateWatermarkFromControls() { 
             if (selectedWatermarkIndex === -1) return; 
             const wm = watermarks[selectedWatermarkIndex]; 
-            wm.text = watermarkText.value; wm.fontSize = parseInt(fontSize.value, 10); wm.fontColor = fontColor.value; wm.opacity = parseFloat(opacity.value); wm.rotation = parseInt(rotation.value, 10); wm.fontFamily = fontFamily.value; wm.padding = parseInt(padding.value, 10); wm.backgroundColor = backgroundColor.value; wm.backgroundOpacity = parseFloat(backgroundOpacity.value); wm.isBold = boldBtn.classList.contains('active'); wm.isItalic = italicBtn.classList.contains('active'); wm.isUnderline = underlineBtn.classList.contains('active'); wm.textAlign = alignLeftBtn.classList.contains('active') ? 'left' : 'center'; 
-            autoFitWatermarkBox(wm); // 每次更新都重新计算大小
+            wm.text = watermarkText.value.replace(/\\n/g, '\n'); 
+            wm.fontSize = parseInt(fontSize.value, 10); 
+            wm.fontColor = fontColor.value; 
+            wm.opacity = parseFloat(opacity.value); 
+            wm.rotation = parseInt(rotation.value, 10); 
+            wm.fontFamily = fontFamily.value; 
+            wm.padding = parseInt(padding.value, 10); 
+            wm.backgroundColor = backgroundColor.value; 
+            wm.backgroundOpacity = parseFloat(backgroundOpacity.value); 
+            wm.isBold = boldBtn.classList.contains('active'); 
+            wm.isItalic = italicBtn.classList.contains('active'); 
+            wm.isUnderline = underlineBtn.classList.contains('active'); 
+            wm.textAlign = alignLeftBtn.classList.contains('active') ? 'left' : 'center'; 
+            autoFitWatermarkBox(wm);
             drawCanvas(); 
         }
-        function updateAllControls() { if (selectedWatermarkIndex === -1) return; const wm = watermarks[selectedWatermarkIndex]; watermarkText.value = wm.text; fontSize.value = wm.fontSize; fontColor.value = fontColorText.value = wm.fontColor; opacity.value = wm.opacity; rotation.value = wm.rotation; fontFamily.value = wm.fontFamily; padding.value = wm.padding; backgroundColor.value = backgroundColorText.value = wm.backgroundColor; backgroundOpacity.value = wm.backgroundOpacity; boldBtn.classList.toggle('active', wm.isBold); italicBtn.classList.toggle('active', wm.isItalic); underlineBtn.classList.toggle('active', wm.isUnderline); alignLeftBtn.classList.toggle('active', wm.textAlign === 'left'); alignCenterBtn.classList.toggle('active', wm.textAlign === 'center'); drawCanvas(); }
+        function updateAllControls() { 
+            if (selectedWatermarkIndex === -1) return; 
+            const wm = watermarks[selectedWatermarkIndex]; 
+            watermarkText.value = wm.text.replace(/\n/g, '\\n'); 
+            fontSize.value = wm.fontSize; 
+            fontColor.value = fontColorText.value = wm.fontColor; 
+            opacity.value = wm.opacity; 
+            rotation.value = wm.rotation; 
+            fontFamily.value = wm.fontFamily; 
+            padding.value = wm.padding; 
+            backgroundColor.value = backgroundColorText.value = wm.backgroundColor; 
+            backgroundOpacity.value = wm.backgroundOpacity; 
+            boldBtn.classList.toggle('active', wm.isBold); 
+            italicBtn.classList.toggle('active', wm.isItalic); 
+            underlineBtn.classList.toggle('active', wm.isUnderline); 
+            alignLeftBtn.classList.toggle('active', wm.textAlign === 'left'); 
+            alignCenterBtn.classList.toggle('active', wm.textAlign === 'center'); 
+            drawCanvas(); 
+        }
 
         function addEventListeners() {
             dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
@@ -328,57 +394,31 @@
         }
 
         function getMousePos(e) { const rect = canvas.getBoundingClientRect(); return { x: e.clientX - rect.left, y: e.clientY - rect.top }; }
-        
-        // --- 交互逻辑简化 ---
-        function handleCanvasMouseDown(e) { 
-            const pos = getMousePos(e); 
-            for (let i = watermarks.length - 1; i >= 0; i--) { 
-                const wm = watermarks[i];
-                // 简化为仅检测是否在包围盒内
-                if (pos.x >= wm.x && pos.x <= wm.x + wm.width && pos.y >= wm.y && pos.y <= wm.y + wm.height) { 
-                    isDragging = true; 
-                    dragOffsetX = pos.x - wm.x; 
-                    dragOffsetY = pos.y - wm.y; 
-                    selectedWatermarkIndex = i; 
-                    updateAllControls(); 
-                    return; 
-                } 
-            } 
-            selectedWatermarkIndex = -1; 
-            drawCanvas(); 
-        }
-        function handleCanvasMouseMove(e) { 
-            const pos = getMousePos(e); 
-            if (isDragging && selectedWatermarkIndex !== -1) { 
-                const wm = watermarks[selectedWatermarkIndex]; 
-                wm.x = pos.x - dragOffsetX; 
-                wm.y = pos.y - dragOffsetY; 
-                drawCanvas(); 
-            } else { 
-                updateCursor(pos); 
-            } 
-        }
-        function updateCursor(pos) { 
-            let cursor = 'default'; 
-            for (let i = watermarks.length-1; i >= 0; i--) { 
-                const wm = watermarks[i]; 
-                if (pos.x >= wm.x && pos.x <= wm.x + wm.width && pos.y >= wm.y && pos.y <= wm.y+wm.height) { 
-                    cursor = 'move'; // 只有移动光标
-                    break; 
-                } 
-            } 
-            canvas.style.cursor = cursor; 
-        }
+        function handleCanvasMouseDown(e) { const pos = getMousePos(e); for (let i = watermarks.length - 1; i >= 0; i--) { const wm = watermarks[i]; if (pos.x >= wm.x && pos.x <= wm.x + wm.width && pos.y >= wm.y && pos.y <= wm.y + wm.height) { isDragging = true; dragOffsetX = pos.x - wm.x; dragOffsetY = pos.y - wm.y; selectedWatermarkIndex = i; updateAllControls(); return; } } selectedWatermarkIndex = -1; drawCanvas(); }
+        function handleCanvasMouseMove(e) { const pos = getMousePos(e); if (isDragging && selectedWatermarkIndex !== -1) { const wm = watermarks[selectedWatermarkIndex]; wm.x = pos.x - dragOffsetX; wm.y = pos.y - dragOffsetY; drawCanvas(); } else { updateCursor(pos); } }
+        function updateCursor(pos) { let cursor = 'default'; for (let i = watermarks.length-1; i >= 0; i--) { const wm = watermarks[i]; if (pos.x >= wm.x && pos.x <= wm.x + wm.width && pos.y >= wm.y && pos.y <= wm.y+wm.height) { cursor = 'move'; break; } } canvas.style.cursor = cursor; }
         function handleCanvasMouseUp() { isDragging = false; isResizing = false; }
-
         function toggleRedBookMode() { const isActive = redbookModeBtn.classList.toggle('active'); redbookModeBtn.textContent = isActive ? '开' : '关'; redbookOptionsGroup.style.display = isActive ? 'flex' : 'none'; drawCanvas(); }
         function handleRedBookBgModeChange(e) { if (e.target.tagName !== 'BUTTON') return; const mode = e.target.dataset.mode; currentRedBookBgMode = mode; document.querySelectorAll('#redbook-options-wrapper .toggle-button').forEach(btn => btn.classList.toggle('active', btn.dataset.mode === mode)); drawCanvas(); }
         function toggleTweakMode() { const isActive = tweakModeBtn.classList.toggle('active'); tweakModeBtn.textContent = isActive ? '开' : '关'; tweakAmountGroup.style.display = isActive ? 'flex' : 'none'; }
-
-        function getProcessingOptions() { /* ... (代码无变化) ... */ let bgColor = '#FFFFFF'; if (redbookModeBtn.classList.contains('active')) { if (currentRedBookBgMode === 'edge') bgColor = getEdgeColor(previewImage); else if (currentRedBookBgMode === 'white') bgColor = '#FFFFFF'; else if (currentRedBookBgMode === 'black') bgColor = '#000000'; else if (currentRedBookBgMode === 'transparent') bgColor = 'rgba(0,0,0,0)'; else if (currentRedBookBgMode === 'custom') bgColor = redbookBackgroundColor.value; } return { watermarks: watermarks, resizeToRedBookRatio: redbookModeBtn.classList.contains('active'), redBookBackgroundColor: bgColor, enableImageTweak: tweakModeBtn.classList.contains('active'), tweakAmount: parseInt(tweakAmount.value, 10), outputQuality: parseFloat(outputQuality.value) }; }
-        function startProcessing() { /* ... (代码无变化) ... */ if (uploadedFiles.length === 0 || !worker) return; processButton.disabled = true; statusMessage.textContent = '准备开始处理...'; statusMessage.className = ''; progressBarContainer.style.display = 'block'; progressBar.style.width = '0%'; downloadSection.innerHTML = ''; worker.postMessage({ type: 'processImages', filesData: uploadedFiles, options: getProcessingOptions() }); }
-        if (worker) { worker.onmessage = (e) => { /* ... (代码无变化) ... */ const { type, message, name, blob, isLast } = e.data; if (type === 'progress') { statusMessage.textContent = message; } else if (type === 'result') { progressBar.style.width = `${(uploadedFiles.findIndex(f => `watermarked_${f.name}` === name) + 1) / uploadedFiles.length * 100}%`; const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = name; link.textContent = `下载 ${name}`; link.className = 'button'; downloadSection.appendChild(link); downloadSection.appendChild(document.createElement('br')); if (isLast) { statusMessage.textContent = '所有图片处理完成！'; processButton.disabled = false; } } else if (type === 'error') { statusMessage.textContent = message; statusMessage.className = 'error'; processButton.disabled = false; } }; }
-        
+        function getProcessingOptions() { let bgColor = '#FFFFFF'; if (redbookModeBtn.classList.contains('active')) { if (currentRedBookBgMode === 'edge') bgColor = getEdgeColor(previewImage); else if (currentRedBookBgMode === 'white') bgColor = '#FFFFFF'; else if (currentRedBookBgMode === 'black') bgColor = '#000000'; else if (currentRedBookBgMode === 'transparent') bgColor = 'rgba(0,0,0,0)'; else if (currentRedBookBgMode === 'custom') bgColor = redbookBackgroundColor.value; } return { watermarks: watermarks, resizeToRedBookRatio: redbookModeBtn.classList.contains('active'), redBookBackgroundColor: bgColor, enableImageTweak: tweakModeBtn.classList.contains('active'), tweakAmount: parseInt(tweakAmount.value, 10), outputQuality: parseFloat(outputQuality.value) }; }
+        function startProcessing() { if (uploadedFiles.length === 0 || !worker) return; processButton.disabled = true; statusMessage.textContent = '准备开始处理...'; statusMessage.className = ''; progressBarContainer.style.display = 'block'; progressBar.style.width = '0%'; downloadSection.innerHTML = ''; worker.postMessage({ type: 'processImages', filesData: uploadedFiles, options: getProcessingOptions() }); }
+        if (worker) {
+            worker.onmessage = (e) => {
+                const { type, message, name, blob, isLast } = e.data;
+                if (type === 'progress') { statusMessage.textContent = message; } 
+                else if (type === 'result') {
+                    const progress = (uploadedFiles.findIndex(f => `watermarked_${f.name}` === name) + 1) / uploadedFiles.length * 100;
+                    progressBar.style.width = `${progress}%`;
+                    const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = name; link.textContent = `下载 ${name}`; link.className = 'button';
+                    downloadSection.appendChild(link); downloadSection.appendChild(document.createElement('br'));
+                    if (isLast) { statusMessage.textContent = '所有图片处理完成！'; processButton.disabled = false; }
+                } else if (type === 'error') {
+                    statusMessage.textContent = message; statusMessage.className = 'error';
+                    if (isLast) { processButton.disabled = false; }
+                }
+            };
+        }
         initialize();
     });
     </script>
