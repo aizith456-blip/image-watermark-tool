@@ -3,421 +3,155 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>批量图片加水印工具</title>
+    <title>极简图片加水印工具</title>
     <style>
-        /* style.css (v13 - 稳定版) */
-        :root { --primary-color: #28a745; --primary-hover-color: #218838; --border-color: #e0e0e0; --background-color: #f8f9fa; --card-background-color: #ffffff; --text-color: #333; --muted-text-color: #6c757d; --error-color: #dc3545; --font-family: 'Helvetica Neue', Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; }
-        body { font-family: var(--font-family); background-color: var(--background-color); color: var(--text-color); margin: 0; padding: 1rem; font-size: 14px; }
-        .container { max-width: 1200px; margin: 0 auto; padding: 0; }
-        h1, h2 { color: var(--text-color); font-weight: 500; }
-        h1 { text-align: center; font-size: 1.8rem; margin-bottom: 1rem; }
-        h2 { font-size: 1.2rem; margin-top: 0; margin-bottom: 0.8rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-color); }
-        .card { background-color: var(--card-background-color); border-radius: 8px; border: 1px solid var(--border-color); padding: 1rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); }
-        .form-group { margin-bottom: 0.8rem; display: flex; flex-direction: column; }
-        .form-group label { margin-bottom: 4px; font-weight: 500; color: var(--muted-text-color); }
-        input[type="text"], input[type="number"], select { box-sizing: border-box; width: 100%; padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 14px; transition: border-color 0.2s; }
-        input:focus, select:focus { outline: none; border-color: var(--primary-color); }
-        button, .button { background-color: var(--primary-color); color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500; text-decoration: none; display: inline-block; transition: background-color 0.2s; }
-        button:hover, .button:hover { background-color: var(--primary-hover-color); }
-        button:disabled { background-color: #cccccc; cursor: not-allowed; }
-        .toggle-button-group { display: flex; gap: -1px; }
-        .toggle-button { background-color: #fff; color: var(--text-color); border: 1px solid var(--border-color); padding: 6px 12px; flex: 1; white-space: nowrap; }
-        .toggle-button:not(:last-child) { border-right: none; }
-        .toggle-button:first-child { border-top-left-radius: 4px; border-bottom-left-radius: 4px; }
-        .toggle-button:last-child { border-top-right-radius: 4px; border-bottom-right-radius: 4px; }
-        .toggle-button.active { background-color: var(--primary-color); color: white; border-color: var(--primary-color); z-index: 1; }
-        #drop-zone { border: 2px dashed var(--border-color); border-radius: 8px; padding: 1.5rem; text-align: center; cursor: pointer; transition: background-color 0.2s, border-color 0.2s; }
-        #drop-zone.dragover { background-color: #e9f5ec; border-color: var(--primary-color); }
-        #file-list { margin-top: 1rem; max-height: 150px; overflow-y: auto; font-size: 13px; }
-        .file-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-bottom: 1px solid var(--border-color); }
-        .file-item:last-child { border-bottom: none; }
-        #settings-section { position: sticky; top: 1rem; z-index: 1000; background-color: rgba(255, 255, 255, 0.98); backdrop-filter: blur(5px); }
-        .controls-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.8rem 1rem; }
-        .color-input-container { display: flex; align-items: center; gap: 8px; }
-        .color-input-container input[type="color"] { padding: 0; width: 32px; height: 32px; border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer; }
-        .color-input-container input[type="text"] { flex: 1; }
-        #redbook-options-wrapper { display: flex; flex-direction: column; gap: 8px; }
-        #redbook-custom-color-container { display: flex; align-items: center; gap: 8px; }
-        #redbook-custom-color-container .color-input-container { flex-grow: 1; }
-        #preview-container { position: relative; width: 100%; background-color: #f0f0f0; border: 1px solid var(--border-color); overflow: auto; display: flex; justify-content: center; align-items: center; min-height: 300px; max-height: 50vh; }
-        #canvas { max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        #process-button { width: 100%; padding: 12px; font-size: 16px; }
-        #progress-bar-container { width: 100%; background-color: #e9ecef; border-radius: 4px; margin-top: 1rem; overflow: hidden; height: 10px; }
-        #progress-bar { width: 0; height: 100%; background-color: var(--primary-color); transition: width 0.3s ease; }
-        #status-message { margin-top: 0.5rem; color: var(--muted-text-color); text-align: center; min-height: 20px; }
-        #status-message.error { color: var(--error-color); font-weight: bold;}
-        #download-section { margin-top: 1rem; }
-        #version-tag { font-size: 0.8rem; color: var(--muted-text-color); font-weight: normal; vertical-align: middle; margin-left: 8px; }
+        body { font-family: sans-serif; background-color: #f0f2f5; margin: 0; padding: 2rem; display: flex; justify-content: center; align-items: flex-start; }
+        .container { background-color: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 700px; }
+        h1, h2 { color: #333; border-bottom: 1px solid #eee; padding-bottom: 0.5rem; }
+        .form-group { margin-bottom: 1rem; }
+        label { display: block; margin-bottom: 0.5rem; font-weight: bold; color: #555; }
+        input[type="text"], input[type="number"], select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        button { background-color: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-size: 16px; transition: background-color 0.2s; }
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+        #status, #download-links { margin-top: 1rem; }
+        #preview-canvas { max-width: 100%; border: 1px solid #ddd; margin-top: 1rem; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>批量图片加水印工具 <span id="version-tag"></span></h1>
-        <section id="upload-section" class="card">
-            <h2>1. 选择图片</h2>
-            <div id="drop-zone">
-                <p>将图片文件拖到此处，或点击选择文件</p>
-                <input type="file" id="file-input" multiple accept="image/png, image/jpeg" style="display: none;">
-                <button type="button" id="select-files-button">选择文件</button>
-            </div>
-            <div id="file-list"></div>
-        </section>
-        <section id="settings-section" class="card">
-            <h2>2. 水印与输出设置</h2>
-            <div class="controls-grid">
-                <div class="form-group" style="grid-column: 1 / -1;"><label for="watermark-text">水印文本 (可用 \n 手动换行)</label><input type="text" id="watermark-text" value="洋宝儿影视"></div>
-                <div class="form-group"><label for="font-family">字体</label><select id="font-family"><option value="SimHei">黑体</option><option value="SimSun">宋体</option><option value="KaiTi">楷体</option><option value="FangSong">仿宋</option><option value="Microsoft YaHei">微软雅黑</option><option value="Arial">Arial</option></select></div>
-                <div class="form-group"><label for="font-size">字号 (px)</label><input type="number" id="font-size" value="40" min="1"></div>
-                <div class="form-group"><label>字体颜色</label><div class="color-input-container"><input type="color" id="font-color" value="#FFFFFF"><input type="text" id="font-color-text" value="#FFFFFF"></div></div>
-                <div class="form-group"><label for="opacity">文本透明度 (0-1)</label><input type="number" id="opacity" value="0.5" min="0" max="1" step="0.05"></div>
-                <div class="form-group"><label>字体样式</label><div class="toggle-button-group"><button class="toggle-button" id="bold-btn">B</button><button class="toggle-button" id="italic-btn">I</button><button class="toggle-button" id="underline-btn">U</button></div></div>
-                <div class="form-group"><label>对齐方式</label><div class="toggle-button-group"><button class="toggle-button active" id="align-left-btn">左</button><button class="toggle-button" id="align-center-btn">中</button></div></div>
-                <div class="form-group"><label for="rotation">旋转角度 (°)</label><input type="number" id="rotation" value="0" step="1"></div>
-                <!-- 移除了致命的 padding 输入框 -->
-                <div class="form-group"><label>背景颜色</label><div class="color-input-container"><input type="color" id="background-color" value="#000000"><input type="text" id="background-color-text" value="#000000"></div></div>
-                <div class="form-group"><label for="background-opacity">背景透明度 (0-1)</label><input type="number" id="background-opacity" value="1" min="0" max="1" step="0.05"></div>
-                <div class="form-group"><label>小红书3:4边框</label><div class="toggle-button-group"><button class="toggle-button" id="redbook-mode-btn">关</button></div></div>
-                <div class="form-group" id="redbook-options-group" style="display: none; grid-column: 1 / -1;">
-                    <label>边框填充模式</label>
-                    <div id="redbook-options-wrapper">
-                        <div class="toggle-button-group" id="redbook-bg-mode-group">
-                            <button class="toggle-button active" data-mode="edge">智能</button>
-                            <button class="toggle-button" data-mode="white">白色</button>
-                            <button class="toggle-button" data-mode="black">黑色</button>
-                            <button class="toggle-button" data-mode="transparent">透明</button>
-                        </div>
-                        <div id="redbook-custom-color-container">
-                            <button class="toggle-button" data-mode="custom">自定义</button>
-                            <div class="color-input-container"><input type="color" id="redbook-background-color" value="#FFFFFF"><input type="text" id="redbook-background-color-text" value="#FFFFFF"></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="form-group"><label>防识别微调</label><div class="toggle-button-group"><button class="toggle-button" id="tweak-mode-btn">关</button></div></div>
-                <div class="form-group" id="tweak-amount-group" style="display: none;"><label for="tweak-amount">微调强度 (1-10)</label><input type="number" id="tweak-amount" value="2" min="1" max="10" step="1"></div>
-                <div class="form-group"><label for="output-quality">JPG输出质量 (0-1)</label><input type="number" id="output-quality" value="0.92" min="0.1" max="1" step="0.01"></div>
-            </div>
-        </section>
-        <section id="preview-section" class="card">
-            <h2>3. 预览区域</h2>
-            <div id="preview-container"><canvas id="canvas"></canvas></div>
-        </section>
-        <section id="process-section" class="card">
-            <h2>4. 处理与下载</h2>
-            <button id="process-button" disabled>开始处理图片</button>
-            <div id="progress-bar-container" style="display: none;"><div id="progress-bar"></div></div>
-            <p id="status-message"></p>
-            <div id="download-section"></div>
-        </section>
+        <h1>极简图片加水印工具</h1>
+        
+        <h2>1. 设置</h2>
+        <div class="form-group">
+            <label for="watermark-text">水印文字</label>
+            <input type="text" id="watermark-text" value="洋宝儿影视">
+        </div>
+        <div class="form-group">
+            <label for="font-size">字号 (px)</label>
+            <input type="number" id="font-size" value="30">
+        </div>
+
+        <h2>2. 上传图片</h2>
+        <div class="form-group">
+            <input type="file" id="file-input" multiple accept="image/png, image/jpeg">
+        </div>
+        
+        <h2>3. 预览 (第一张图)</h2>
+        <canvas id="preview-canvas"></canvas>
+
+        <h2>4. 处理与下载</h2>
+        <button id="process-button" disabled>开始处理</button>
+        <div id="status"></div>
+        <div id="download-links"></div>
     </div>
 
     <script>
+    // 这是一个全新的、从零开始的脚本，以确保绝对的稳定性。
+    // 它只包含最核心的功能，移除了所有可能导致冲突的复杂逻辑。
+
     document.addEventListener('DOMContentLoaded', () => {
-        const APP_VERSION = "v13 (稳定版)";
-
-        // --- 共享函数 ---
-        const sharedFunctions = {
-            drawWatermark: function(context, watermark) {
-                context.save();
-                const centerX = watermark.x + watermark.width / 2, centerY = watermark.y + watermark.height / 2;
-                context.translate(centerX, centerY);
-                context.rotate(watermark.rotation * Math.PI / 180);
-                context.translate(-centerX, -centerY);
-                
-                if (watermark.backgroundOpacity > 0) {
-                    context.globalAlpha = watermark.backgroundOpacity;
-                    context.fillStyle = watermark.backgroundColor;
-                    context.fillRect(watermark.x, watermark.y, watermark.width, watermark.height);
-                }
-                
-                context.globalAlpha = watermark.opacity;
-                let fontStyle = `${watermark.isItalic ? 'italic ' : ''}${watermark.isBold ? 'bold ' : ''}${watermark.fontSize}px ${watermark.fontFamily}`;
-                context.font = fontStyle;
-                context.fillStyle = watermark.fontColor;
-                context.textAlign = watermark.textAlign;
-                context.textBaseline = 'middle';
-                
-                const lines = watermark.text.split('\n');
-                const lineHeight = watermark.fontSize * 1.2;
-                const totalTextHeight = lines.length * lineHeight;
-                let startTextY = watermark.y + watermark.height / 2 - totalTextHeight / 2 + lineHeight / 2;
-                
-                lines.forEach((line, i) => {
-                    let textX = (watermark.textAlign === 'center') ? (watermark.x + watermark.width / 2) : (watermark.x + watermark.padding);
-                    context.fillText(line, textX, startTextY + i * lineHeight);
-                    if (watermark.isUnderline) {
-                        const metrics = context.measureText(line);
-                        const underlineY = startTextY + i * lineHeight + watermark.fontSize / 2 + 2;
-                        let underlineStartX = (watermark.textAlign === 'center') ? (textX - metrics.width / 2) : textX;
-                        context.strokeStyle = watermark.fontColor;
-                        context.lineWidth = Math.max(1, watermark.fontSize / 20);
-                        context.beginPath();
-                        context.moveTo(underlineStartX, underlineY);
-                        context.lineTo(underlineStartX + metrics.width, underlineY);
-                        context.stroke();
-                    }
-                });
-                context.restore();
-            },
-            applyImageTweak: function(ctx, canvas, tweakAmount) {
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const data = imageData.data;
-                for (let i = 0; i < data.length; i += 4) {
-                    const noise = (Math.random() - 0.5) * tweakAmount * 2;
-                    data[i] = Math.min(255, Math.max(0, data[i] + noise));
-                    data[i+1] = Math.min(255, Math.max(0, data[i+1] + noise));
-                    data[i+2] = Math.min(255, Math.max(0, data[i+2] + noise));
-                }
-                ctx.putImageData(imageData, 0, 0);
-            }
-        };
-
-        // --- Web Worker 脚本 ---
-        const workerCode = `
-        const drawWatermark = ${sharedFunctions.drawWatermark.toString()};
-        const applyImageTweak = ${sharedFunctions.applyImageTweak.toString()};
-
-        self.onmessage = async (e) => {
-            if (e.data.type === 'processImages') {
-                const { filesData, options } = e.data;
-                for (let i = 0; i < filesData.length; i++) {
-                    const fileData = filesData[i];
-                    self.postMessage({ type: 'progress', message: \`正在处理 \${i + 1}/\${filesData.length}：\${fileData.name}\` });
-                    try {
-                        const imgBitmap = await createImageBitmap(await (await fetch(fileData.dataURL)).blob());
-                        const tempCanvas = new OffscreenCanvas(imgBitmap.width, imgBitmap.height);
-                        const tempCtx = tempCanvas.getContext('2d');
-                        let finalCanvasWidth = imgBitmap.width, finalCanvasHeight = imgBitmap.height, drawX = 0, drawY = 0;
-                        if (options.resizeToRedBookRatio) {
-                            const targetRatio = 3 / 4; const originalRatio = imgBitmap.width / imgBitmap.height;
-                            if (originalRatio > targetRatio) { finalCanvasHeight = imgBitmap.width / targetRatio; drawY = (finalCanvasHeight - imgBitmap.height) / 2; } 
-                            else if (originalRatio < targetRatio) { finalCanvasWidth = imgBitmap.height * targetRatio; drawX = (finalCanvasWidth - imgBitmap.width) / 2; }
-                            if (options.redBookBackgroundColor === 'rgba(0,0,0,0)') { finalCanvasWidth = imgBitmap.width; finalCanvasHeight = imgBitmap.height; drawX = 0; drawY = 0; }
-                        }
-                        tempCanvas.width = finalCanvasWidth; tempCanvas.height = finalCanvasHeight;
-                        if (options.resizeToRedBookRatio && options.redBookBackgroundColor !== 'rgba(0,0,0,0)') {
-                            tempCtx.fillStyle = options.redBookBackgroundColor;
-                            tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-                        }
-                        tempCtx.drawImage(imgBitmap, drawX, drawY, imgBitmap.width, imgBitmap.height);
-                        options.watermarks.forEach(wm => drawWatermark(tempCtx, wm)); 
-                        if (options.enableImageTweak && options.tweakAmount > 0) {
-                            applyImageTweak(tempCtx, tempCanvas, options.tweakAmount);
-                        }
-                        const mimeType = fileData.name.toLowerCase().endsWith('png') ? 'image/png' : 'image/jpeg';
-                        const quality = mimeType === 'image/jpeg' ? options.outputQuality : 1.0;
-                        const blob = await tempCanvas.convertToBlob({ type: mimeType, quality: quality });
-                        self.postMessage({ type: 'result', name: \`watermarked_\${fileData.name}\`, blob, isLast: i === filesData.length - 1 });
-                    } catch (error) { self.postMessage({ type: 'error', message: \`处理文件 \${fileData.name} 失败: \${error.message}\`, isLast: i === filesData.length - 1 }); }
-                }
-            }
-        };`;
-        let worker;
-        try { worker = new Worker(URL.createObjectURL(new Blob([workerCode], { type: 'application/javascript' }))); } catch (e) { console.error("创建 Worker 失败:", e); alert("无法初始化处理核心，可能是浏览器不支持或安全策略限制。"); }
+        // 获取所有必要的元素
+        const watermarkTextInput = document.getElementById('watermark-text');
+        const fontSizeInput = document.getElementById('font-size');
+        const fileInput = document.getElementById('file-input');
+        const previewCanvas = document.getElementById('preview-canvas');
+        const processButton = document.getElementById('process-button');
+        const statusDiv = document.getElementById('status');
+        const downloadLinksDiv = document.getElementById('download-links');
         
-        const get = id => document.getElementById(id);
-        const versionTag = get('version-tag');
-        const dropZone = get('drop-zone'), fileInput = get('file-input'), selectFilesButton = get('select-files-button'), fileListDiv = get('file-list'), canvas = get('canvas'), ctx = canvas.getContext('2d'), processButton = get('process-button'), progressBarContainer = get('progress-bar-container'), progressBar = get('progress-bar'), statusMessage = get('status-message'), downloadSection = get('download-section');
-        const watermarkText = get('watermark-text'), fontSize = get('font-size'), fontColor = get('font-color'), fontColorText = get('font-color-text'), opacity = get('opacity'), rotation = get('rotation'), fontFamily = get('font-family'), /* padding removed */ backgroundColor = get('background-color'), backgroundColorText = get('background-color-text'), backgroundOpacity = get('background-opacity'), boldBtn = get('bold-btn'), italicBtn = get('italic-btn'), underlineBtn = get('underline-btn'), alignLeftBtn = get('align-left-btn'), alignCenterBtn = get('align-center-btn');
-        const redbookModeBtn = get('redbook-mode-btn'), redbookOptionsGroup = get('redbook-options-group'), redbookBgModeGroup = get('redbook-bg-mode-group'), redbookBackgroundColor = get('redbook-background-color'), redbookBackgroundColorText = get('redbook-background-color-text');
-        const tweakModeBtn = get('tweak-mode-btn'), tweakAmountGroup = get('tweak-amount-group'), tweakAmount = get('tweak-amount'), outputQuality = get('output-quality');
+        let uploadedFiles = [];
 
-        let uploadedFiles = [], previewImage = new Image(), watermarks = [], selectedWatermarkIndex = -1, isDragging = false, dragOffsetX, dragOffsetY;
-        let currentRedBookBgMode = 'edge';
-        const tempCtx = document.createElement('canvas').getContext('2d');
-
-        function initialize() { 
-            versionTag.textContent = APP_VERSION;
-            addDefaultWatermark(); 
-            addEventListeners(); 
-            updateAllControls();
+        // 绘制水印的核心函数
+        function drawWatermark(ctx, text, fontSize, canvasWidth, canvasHeight) {
+            ctx.font = `${fontSize}px SimHei`; // 固定使用黑体
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'; // 固定半透明白色
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'bottom';
+            const padding = 15; // 固定内边距
+            ctx.fillText(text, canvasWidth - padding, canvasHeight - padding);
         }
 
-        function handleFiles(files) {
-            const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
-            if (imageFiles.length === 0) return;
-            uploadedFiles = []; fileListDiv.innerHTML = '';
-            imageFiles.forEach(file => {
-                const reader = new FileReader();
-                reader.onload = e => {
-                    uploadedFiles.push({ name: file.name, dataURL: e.target.result });
-                    if (uploadedFiles.length === 1) loadPreviewImage(e.target.result);
-                    if (uploadedFiles.length === imageFiles.length) processButton.disabled = false;
+        // 更新预览图像
+        function updatePreview() {
+            if (uploadedFiles.length === 0) return;
+
+            const firstFile = uploadedFiles[0];
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    previewCanvas.width = img.width;
+                    previewCanvas.height = img.height;
+                    const ctx = previewCanvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    drawWatermark(ctx, watermarkTextInput.value, fontSizeInput.value, img.width, img.height);
                 };
-                reader.readAsDataURL(file);
-                fileListDiv.insertAdjacentHTML('beforeend', `<div class="file-item">${file.name}</div>`);
-            });
-        }
-        function loadPreviewImage(src) { 
-            previewImage.onload = () => { 
-                watermarks.forEach(wm => {
-                    wm.x = (previewImage.width - wm.width) / 2;
-                    wm.y = (previewImage.height - wm.height) / 2;
-                });
-                drawCanvas(); 
-            }; 
-            previewImage.src = src; 
-        }
-
-        function getEdgeColor(img) { if (!img.src || img.width === 0) return 'rgba(255,255,255,1)'; const tempCanvas = document.createElement('canvas'), tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true }); tempCanvas.width = img.width; tempCanvas.height = img.height; tempCtx.drawImage(img, 0, 0, img.width, img.height); let r = 0, g = 0, b = 0, count = 0; [ tempCtx.getImageData(0, 0, img.width, 1).data, tempCtx.getImageData(0, img.height - 1, img.width, 1).data, tempCtx.getImageData(0, 0, 1, img.height).data, tempCtx.getImageData(img.width - 1, 0, 1, img.height).data ].forEach(data => { for (let i = 0; i < data.length; i += 4) { r += data[i]; g += data[i+1]; b += data[i+2]; count++; } }); return `rgba(${Math.round(r/count)},${Math.round(g/count)},${Math.round(b/count)},1)`; }
-        
-        function drawCanvas() {
-            if (!previewImage.src) return;
-            let bgColor = '#FFFFFF';
-            if (redbookModeBtn.classList.contains('active')) {
-                if (currentRedBookBgMode === 'edge') bgColor = getEdgeColor(previewImage);
-                else if (currentRedBookBgMode === 'white') bgColor = '#FFFFFF';
-                else if (currentRedBookBgMode === 'black') bgColor = '#000000';
-                else if (currentRedBookBgMode === 'transparent') bgColor = 'rgba(0,0,0,0)';
-                else if (currentRedBookBgMode === 'custom') bgColor = redbookBackgroundColor.value;
-            }
-            const targetRatio = 3 / 4;
-            let finalCanvasWidth = previewImage.width, finalCanvasHeight = previewImage.height, drawX = 0, drawY = 0;
-            if (redbookModeBtn.classList.contains('active')) {
-                const originalRatio = previewImage.width / previewImage.height;
-                if (originalRatio > targetRatio) { finalCanvasHeight = previewImage.width / targetRatio; drawY = (finalCanvasHeight - previewImage.height) / 2; } 
-                else if (originalRatio < targetRatio) { finalCanvasWidth = previewImage.height * targetRatio; drawX = (finalCanvasWidth - previewImage.width) / 2; }
-                if (bgColor === 'rgba(0,0,0,0)') { finalCanvasWidth = previewImage.width; finalCanvasHeight = previewImage.height; drawX = 0; drawY = 0; }
-            }
-            canvas.width = finalCanvasWidth; canvas.height = finalCanvasHeight;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            if (redbookModeBtn.classList.contains('active') && bgColor !== 'rgba(0,0,0,0)') { ctx.fillStyle = bgColor; ctx.fillRect(0, 0, canvas.width, canvas.height); }
-            ctx.drawImage(previewImage, drawX, drawY, previewImage.width, previewImage.height);
-            watermarks.forEach((wm, index) => drawWatermarkOnPreview(wm, index === selectedWatermarkIndex));
-        }
-
-        const drawWatermarkOnPreview = (watermark, isSelected) => {
-            sharedFunctions.drawWatermark(ctx, watermark);
-            if (isSelected) {
-                ctx.save();
-                const centerX = watermark.x + watermark.width / 2, centerY = watermark.y + watermark.height / 2;
-                ctx.translate(centerX, centerY);
-                ctx.rotate(watermark.rotation * Math.PI / 180);
-                ctx.translate(-centerX, -centerY);
-                ctx.strokeStyle = 'rgba(0, 123, 255, 0.9)';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(watermark.x, watermark.y, watermark.width, watermark.height);
-                ctx.restore();
-            }
-        };
-        
-        function autoFitWatermarkBox(wm) {
-            let fontStyle = `${wm.isItalic ? 'italic ' : ''}${wm.isBold ? 'bold ' : ''}${wm.fontSize}px ${wm.fontFamily}`;
-            tempCtx.font = fontStyle;
-            const lines = wm.text.split('\n');
-            const totalTextHeight = lines.length * (wm.fontSize * 1.2);
-            const maxWidth = Math.max(...lines.map(l => tempCtx.measureText(l).width));
-            
-            const oldCenterX = wm.x + wm.width / 2;
-            const oldCenterY = wm.y + wm.height / 2;
-
-            wm.width = maxWidth + wm.padding * 2;
-            wm.height = totalTextHeight + wm.padding * 2;
-            
-            wm.x = oldCenterX - wm.width / 2;
-            wm.y = oldCenterY - wm.height / 2;
-        }
-
-        function addDefaultWatermark() { 
-            const wm = { text: '洋宝儿影视', x: 150, y: 150, width: 0, height: 0, fontSize: 40, fontFamily: 'SimHei', fontColor: '#FFFFFF', opacity: 0.5, rotation: 0, padding: 20, /* padding is now a fixed value */ backgroundColor: '#000000', backgroundOpacity: 1, isBold: false, isItalic: false, isUnderline: false, textAlign: 'left' };
-            autoFitWatermarkBox(wm);
-            watermarks.push(wm);
-            selectedWatermarkIndex = 0; 
-        }
-        function updateWatermarkFromControls() { 
-            if (selectedWatermarkIndex === -1) return; 
-            const wm = watermarks[selectedWatermarkIndex]; 
-            wm.text = watermarkText.value.replace(/\\n/g, '\n'); 
-            wm.fontSize = parseInt(fontSize.value, 10); 
-            wm.fontColor = fontColor.value; 
-            wm.opacity = parseFloat(opacity.value); 
-            wm.rotation = parseInt(rotation.value, 10); 
-            wm.fontFamily = fontFamily.value; 
-            wm.padding = 20; // Hardcoded padding value
-            wm.backgroundColor = backgroundColor.value; 
-            wm.backgroundOpacity = parseFloat(backgroundOpacity.value); 
-            wm.isBold = boldBtn.classList.contains('active'); 
-            wm.isItalic = italicBtn.classList.contains('active'); 
-            wm.isUnderline = underlineBtn.classList.contains('active'); 
-            wm.textAlign = alignLeftBtn.classList.contains('active') ? 'left' : 'center'; 
-            autoFitWatermarkBox(wm);
-            drawCanvas(); 
-        }
-        function updateAllControls() { 
-            if (selectedWatermarkIndex === -1) return; 
-            const wm = watermarks[selectedWatermarkIndex]; 
-            watermarkText.value = wm.text.replace(/\n/g, '\\n'); 
-            fontSize.value = wm.fontSize; 
-            fontColor.value = fontColorText.value = wm.fontColor; 
-            opacity.value = wm.opacity; 
-            rotation.value = wm.rotation; 
-            fontFamily.value = wm.fontFamily; 
-            // no padding control to update
-            backgroundColor.value = backgroundColorText.value = wm.backgroundColor; 
-            backgroundOpacity.value = wm.backgroundOpacity; 
-            boldBtn.classList.toggle('active', wm.isBold); 
-            italicBtn.classList.toggle('active', wm.isItalic); 
-            underlineBtn.classList.toggle('active', wm.isUnderline); 
-            alignLeftBtn.classList.toggle('active', wm.textAlign === 'left'); 
-            alignCenterBtn.classList.toggle('active', wm.textAlign === 'center'); 
-            drawCanvas(); 
-        }
-
-        function addEventListeners() {
-            dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
-            dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-            dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); handleFiles(e.dataTransfer.files); });
-            selectFilesButton.addEventListener('click', () => fileInput.click());
-            fileInput.addEventListener('change', () => handleFiles(fileInput.files));
-            canvas.addEventListener('mousedown', handleCanvasMouseDown);
-            canvas.addEventListener('mousemove', handleCanvasMouseMove);
-            canvas.addEventListener('mouseup', handleCanvasMouseUp);
-            canvas.addEventListener('mouseleave', handleCanvasMouseUp);
-            // Removed 'padding' from this list to prevent the crash
-            [watermarkText, fontSize, opacity, rotation, fontFamily, backgroundOpacity, outputQuality, tweakAmount].forEach(c => c.addEventListener('input', updateWatermarkFromControls));
-            [['fontColor', 'fontColorText'], ['backgroundColor', 'backgroundColorText'], ['redbookBackgroundColor', 'redbookBackgroundColorText']].forEach(([pickerId, textId]) => {
-                const picker = get(pickerId), text = get(textId);
-                picker.addEventListener('input', () => { text.value = picker.value.toUpperCase(); (pickerId.startsWith('redbook')) ? drawCanvas() : updateWatermarkFromControls(); });
-                text.addEventListener('input', () => { if (/^#[0-9A-F]{6}$/i.test(text.value)) { picker.value = text.value; (pickerId.startsWith('redbook')) ? drawCanvas() : updateWatermarkFromControls(); } });
-            });
-            [boldBtn, italicBtn, underlineBtn].forEach(btn => btn.addEventListener('click', () => { btn.classList.toggle('active'); updateWatermarkFromControls(); }));
-            alignLeftBtn.addEventListener('click', () => { alignLeftBtn.classList.add('active'); alignCenterBtn.classList.remove('active'); updateWatermarkFromControls(); });
-            alignCenterBtn.addEventListener('click', () => { alignCenterBtn.classList.add('active'); alignLeftBtn.classList.remove('active'); updateWatermarkFromControls(); });
-            redbookModeBtn.addEventListener('click', toggleRedBookMode);
-            tweakModeBtn.addEventListener('click', toggleTweakMode);
-            redbookBgModeGroup.addEventListener('click', handleRedBookBgModeChange);
-            get('redbook-custom-color-container').querySelector('.toggle-button').addEventListener('click', handleRedBookBgModeChange);
-            processButton.addEventListener('click', startProcessing);
-        }
-
-        function getMousePos(e) { const rect = canvas.getBoundingClientRect(); return { x: e.clientX - rect.left, y: e.clientY - rect.top }; }
-        function handleCanvasMouseDown(e) { const pos = getMousePos(e); for (let i = watermarks.length - 1; i >= 0; i--) { const wm = watermarks[i]; if (pos.x >= wm.x && pos.x <= wm.x + wm.width && pos.y >= wm.y && pos.y <= wm.y + wm.height) { isDragging = true; dragOffsetX = pos.x - wm.x; dragOffsetY = pos.y - wm.y; selectedWatermarkIndex = i; updateAllControls(); return; } } selectedWatermarkIndex = -1; drawCanvas(); }
-        function handleCanvasMouseMove(e) { const pos = getMousePos(e); if (isDragging && selectedWatermarkIndex !== -1) { const wm = watermarks[selectedWatermarkIndex]; wm.x = pos.x - dragOffsetX; wm.y = pos.y - dragOffsetY; drawCanvas(); } else { updateCursor(pos); } }
-        function updateCursor(pos) { let cursor = 'default'; for (let i = watermarks.length-1; i >= 0; i--) { const wm = watermarks[i]; if (pos.x >= wm.x && pos.x <= wm.x + wm.width && pos.y >= wm.y && pos.y <= wm.y+wm.height) { cursor = 'move'; break; } } canvas.style.cursor = cursor; }
-        function handleCanvasMouseUp() { isDragging = false; }
-        function toggleRedBookMode() { const isActive = redbookModeBtn.classList.toggle('active'); redbookModeBtn.textContent = isActive ? '开' : '关'; redbookOptionsGroup.style.display = isActive ? 'flex' : 'none'; drawCanvas(); }
-        function handleRedBookBgModeChange(e) { if (e.target.tagName !== 'BUTTON') return; const mode = e.target.dataset.mode; currentRedBookBgMode = mode; document.querySelectorAll('#redbook-options-wrapper .toggle-button').forEach(btn => btn.classList.toggle('active', btn.dataset.mode === mode)); drawCanvas(); }
-        function toggleTweakMode() { const isActive = tweakModeBtn.classList.toggle('active'); tweakModeBtn.textContent = isActive ? '开' : '关'; tweakAmountGroup.style.display = isActive ? 'flex' : 'none'; }
-        function getProcessingOptions() { let bgColor = '#FFFFFF'; if (redbookModeBtn.classList.contains('active')) { if (currentRedBookBgMode === 'edge') bgColor = getEdgeColor(previewImage); else if (currentRedBookBgMode === 'white') bgColor = '#FFFFFF'; else if (currentRedBookBgMode === 'black') bgColor = '#000000'; else if (currentRedBookBgMode === 'transparent') bgColor = 'rgba(0,0,0,0)'; else if (currentRedBookBgMode === 'custom') bgColor = redbookBackgroundColor.value; } return { watermarks: watermarks, resizeToRedBookRatio: redbookModeBtn.classList.contains('active'), redBookBackgroundColor: bgColor, enableImageTweak: tweakModeBtn.classList.contains('active'), tweakAmount: parseInt(tweakAmount.value, 10), outputQuality: parseFloat(outputQuality.value) }; }
-        function startProcessing() { if (uploadedFiles.length === 0 || !worker) return; processButton.disabled = true; statusMessage.textContent = '准备开始处理...'; statusMessage.className = ''; progressBarContainer.style.display = 'block'; progressBar.style.width = '0%'; downloadSection.innerHTML = ''; worker.postMessage({ type: 'processImages', filesData: uploadedFiles, options: getProcessingOptions() }); }
-        if (worker) {
-            worker.onmessage = (e) => {
-                const { type, message, name, blob, isLast } = e.data;
-                if (type === 'progress') { statusMessage.textContent = message; } 
-                else if (type === 'result') {
-                    const progress = (uploadedFiles.findIndex(f => `watermarked_${f.name}` === name) + 1) / uploadedFiles.length * 100;
-                    progressBar.style.width = `${progress}%`;
-                    const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = name; link.textContent = `下载 ${name}`; link.className = 'button';
-                    downloadSection.appendChild(link); downloadSection.appendChild(document.createElement('br'));
-                    if (isLast) { statusMessage.textContent = '所有图片处理完成！'; processButton.disabled = false; }
-                } else if (type === 'error') {
-                    statusMessage.textContent = `错误: ${message}`;
-                    statusMessage.className = 'error';
-                    if (isLast) { processButton.disabled = false; }
-                }
+                img.src = e.target.result;
             };
+            reader.readAsDataURL(firstFile);
         }
-        initialize();
+
+        // 当文件被选择时
+        fileInput.addEventListener('change', () => {
+            uploadedFiles = Array.from(fileInput.files);
+            if (uploadedFiles.length > 0) {
+                processButton.disabled = false;
+                statusDiv.textContent = `已选择 ${uploadedFiles.length} 个文件。`;
+                updatePreview();
+            } else {
+                processButton.disabled = true;
+                statusDiv.textContent = '';
+            }
+        });
+
+        // 当水印文字或字号改变时，更新预览
+        watermarkTextInput.addEventListener('input', updatePreview);
+        fontSizeInput.addEventListener('input', updatePreview);
+
+        // 点击“开始处理”按钮
+        processButton.addEventListener('click', async () => {
+            processButton.disabled = true;
+            downloadLinksDiv.innerHTML = '';
+            let processedCount = 0;
+
+            for (const file of uploadedFiles) {
+                statusDiv.textContent = `正在处理 ${file.name}...`;
+                
+                try {
+                    const imgBitmap = await createImageBitmap(file);
+                    const offscreenCanvas = new OffscreenCanvas(imgBitmap.width, imgBitmap.height);
+                    const ctx = offscreenCanvas.getContext('2d');
+                    
+                    ctx.drawImage(imgBitmap, 0, 0);
+                    drawWatermark(ctx, watermarkTextInput.value, fontSizeInput.value, imgBitmap.width, imgBitmap.height);
+                    
+                    const blob = await offscreenCanvas.convertToBlob({ type: file.type, quality: 0.92 });
+                    
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `watermarked_${file.name}`;
+                    link.textContent = `下载 ${link.download}`;
+                    link.style.display = 'block';
+                    link.style.marginBottom = '5px';
+                    downloadLinksDiv.appendChild(link);
+
+                    processedCount++;
+                } catch (error) {
+                    console.error(`处理文件 ${file.name} 失败:`, error);
+                    const errorMsg = document.createElement('p');
+                    errorMsg.textContent = `处理文件 ${file.name} 失败!`;
+                    errorMsg.style.color = 'red';
+                    downloadLinksDiv.appendChild(errorMsg);
+                }
+            }
+
+            statusDiv.textContent = `处理完成！成功 ${processedCount} / ${uploadedFiles.length} 个。`;
+            processButton.disabled = false;
+        });
+
     });
     </script>
 </body>
 </html>
+
