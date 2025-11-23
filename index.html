@@ -3,76 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>水印编辑器 v13.0 (稳定修复版)</title>
-    <!-- 引入 Fabric.js 和 JSZip -->
+    <title>水印编辑器 v13.5 (增加文字背景功能)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    
-    <!-- 引入中文字体 -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&family=Noto+Serif+SC:wght@700&family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     
     <style>
         body { font-family: 'Noto Sans SC', sans-serif; margin: 0; height: 100vh; overflow: hidden; background-color: #f4f6f8; }
-        
         .layout { display: flex; height: 100%; }
-        
-        /* 左侧画布区 */
-        .workspace { 
-            flex: 1; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            background-color: #e0e0e0;
-            background-image: radial-gradient(#aaa 1px, transparent 1px);
-            background-size: 20px 20px;
-            overflow: auto;
-            position: relative;
-        }
-        
-        .canvas-box { 
-            box-shadow: 0 8px 24px rgba(0,0,0,0.15); 
-            background: white;
-        }
-
-        /* 右侧侧边栏 */
+        .workspace { flex: 1; display: flex; justify-content: center; align-items: center; background-color: #e0e0e0; background-image: radial-gradient(#aaa 1px, transparent 1px); background-size: 20px 20px; overflow: auto; position: relative; }
+        .canvas-box { box-shadow: 0 8px 24px rgba(0,0,0,0.15); background: white; }
         .sidebar { width: 320px; background: white; border-left: 1px solid #ddd; display: flex; flex-direction: column; padding: 20px; z-index: 10; box-shadow: -2px 0 10px rgba(0,0,0,0.05); }
-        
         h2 { margin: 0 0 20px 0; font-size: 18px; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; color: #333; }
-        
         .panel { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px dashed #eee; }
         .panel-label { font-size: 12px; color: #888; font-weight: bold; margin-bottom: 8px; display: block; }
-        
-        /* 按钮样式 */
         .btn { width: 100%; padding: 12px; border: 1px solid #ddd; background: #fff; border-radius: 6px; cursor: pointer; font-size: 14px; color: #333; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px; }
         .btn:hover:not(:disabled) { background: #f8f9fa; border-color: #ccc; transform: translateY(-1px); }
-        .btn:active:not(:disabled) { transform: translateY(0); }
         .btn:disabled { opacity: 0.6; cursor: not-allowed; background: #f5f5f5; }
         .btn-primary { background: #007bff; color: white; border-color: #007bff; font-weight: bold; }
         .btn-primary:hover:not(:disabled) { background: #0069d9; }
-
-        /* 3:4 控件行 */
         .row { display: flex; gap: 8px; }
         select { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; background: #fafafa; outline: none; }
-        
-        /* 底部下载 */
         .footer { margin-top: auto; }
         #download-link { display: block; text-align: center; margin-top: 10px; font-size: 13px; color: #007bff; text-decoration: none; }
-        #download-link:hover { text-decoration: underline; }
 
-        /* 悬浮工具栏 */
+        /* --- 悬浮工具栏样式更新 --- */
         .floating-tools {
             position: absolute; display: none; background: white; 
-            padding: 6px; border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); 
+            padding: 6px 10px; border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); 
             z-index: 999; border: 1px solid #eee; animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
         @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
         
-        .tool-row { display: flex; align-items: center; gap: 6px; }
+        .tool-row { display: flex; align-items: center; gap: 8px; }
         .icon-btn { width: 32px; height: 32px; border: none; background: transparent; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; color: #555; }
         .icon-btn:hover { background: #f0f0f0; }
         .icon-btn.active { background: #e3f2fd; color: #007bff; }
-        .divider { width: 1px; height: 20px; background: #ddd; margin: 0 2px; }
-        input[type="color"] { width: 24px; height: 24px; border: none; padding: 0; background: none; cursor: pointer; }
+        .divider { width: 1px; height: 20px; background: #ddd; }
+        
+        /* 颜色选择器包装 */
+        .color-wrap { position: relative; width: 28px; height: 28px; border-radius: 4px; border: 1px solid #ddd; overflow: hidden; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .color-wrap:hover { background: #f0f0f0; }
+        .color-label { font-size: 10px; position: absolute; pointer-events: none; color: #555; font-weight: bold; z-index: 2; text-shadow: 0 0 2px white; }
+        input[type="color"] { width: 150%; height: 150%; border: none; padding: 0; background: none; cursor: pointer; position: absolute; top: -25%; left: -25%; z-index: 1; }
     </style>
 </head>
 <body>
@@ -82,19 +55,38 @@
         <div class="canvas-box">
             <canvas id="c"></canvas>
         </div>
-        <!-- 悬浮工具栏 -->
+        
+        <!-- 更新后的悬浮工具栏 -->
         <div id="float-bar" class="floating-tools">
             <div class="tool-row">
-                <select id="tool-font" style="width: 100px; padding: 4px; font-size: 12px;">
+                <!-- 字体 -->
+                <select id="tool-font" style="width: 90px; padding: 4px; font-size: 12px; border:1px solid #eee;">
                     <option value="'Noto Sans SC', sans-serif">思源黑体</option>
                     <option value="'Noto Serif SC', serif">思源宋体</option>
                     <option value="'ZCOOL KuaiLe', cursive">快乐体</option>
                     <option value="Arial, sans-serif">Arial</option>
                 </select>
+                
                 <div class="divider"></div>
                 <button class="icon-btn" id="tool-bold" title="加粗">B</button>
+                
                 <div class="divider"></div>
-                <input type="color" id="tool-color" title="字体颜色">
+                
+                <!-- 字体颜色 -->
+                <div class="color-wrap" title="文字颜色">
+                    <span class="color-label">字</span>
+                    <input type="color" id="tool-color">
+                </div>
+
+                <!-- 🆕 新增：背景颜色 -->
+                <div class="color-wrap" title="背景颜色">
+                    <span class="color-label">底</span>
+                    <input type="color" id="tool-bg-color" value="#ffff00">
+                </div>
+
+                <!-- 🆕 新增：清除背景按钮 -->
+                <button class="icon-btn" id="tool-bg-clear" title="清除背景" style="font-size: 14px;">🚫</button>
+
                 <div class="divider"></div>
                 <button class="icon-btn" id="tool-del" title="删除" style="color:#d9534f">🗑️</button>
             </div>
@@ -124,4 +116,321 @@
                     📐 改为 3:4
                 </button>
             </div>
-            <p style="font-size:12px; color:#999; margin:6px 0 0 0">*自动填充背景，不裁剪原图
+            <p style="font-size:12px; color:#999; margin:6px 0 0 0">*自动填充背景，不裁剪原图</p>
+        </div>
+
+        <div class="panel">
+            <span class="panel-label">3. 添加内容</span>
+            <button class="btn" id="btn-text">🅰️ 添加文本</button>
+        </div>
+
+        <div class="footer">
+            <button class="btn btn-primary" id="btn-process" disabled>
+                🚀 开始处理
+            </button>
+            <a id="download-link"></a>
+        </div>
+    </aside>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- 1. 初始化 Fabric (代码未变) ---
+    const canvas = new fabric.Canvas('c', {
+        width: 500, height: 400,
+        backgroundColor: '#fff',
+        preserveObjectStacking: true 
+    });
+
+    const fileInput = document.getElementById('file-input');
+    const btn34 = document.getElementById('btn-34');
+    const fillSelect = document.getElementById('fill-mode');
+    const btnText = document.getElementById('btn-text');
+    const btnProcess = document.getElementById('btn-process');
+    const downloadLink = document.getElementById('download-link');
+    
+    let originalFiles = [];
+    let is3to4Mode = false;
+    let previewScale = 1;
+    let originalWidth = 0;
+    let originalHeight = 0;
+
+    // --- 2. 图片上传 (最稳健写法 - 代码未变) ---
+    fileInput.onchange = (e) => {
+        if (!e.target.files.length) return;
+        originalFiles = Array.from(e.target.files);
+        
+        const file = originalFiles[0];
+        const reader = new FileReader();
+        
+        reader.onload = (f) => {
+            const imgObj = new Image();
+            imgObj.src = f.target.result;
+            
+            imgObj.onload = () => {
+                canvas.clear();
+                is3to4Mode = false;
+                downloadLink.textContent = '';
+                btn34.textContent = "📐 改为 3:4";
+                btn34.disabled = false;
+                fillSelect.disabled = false;
+                btnProcess.disabled = false;
+                btnProcess.textContent = `处理 ${originalFiles.length} 张图片`;
+                
+                originalWidth = imgObj.width;
+                originalHeight = imgObj.height;
+
+                const maxW = 800, maxH = 600;
+                const scaleX = maxW / originalWidth;
+                const scaleY = maxH / originalHeight;
+                previewScale = Math.min(scaleX, scaleY, 1);
+                
+                const finalW = originalWidth * previewScale;
+                const finalH = originalHeight * previewScale;
+
+                canvas.setWidth(finalW);
+                canvas.setHeight(finalH);
+                canvas.setBackgroundColor('#fff', canvas.renderAll.bind(canvas));
+
+                const fabricImg = new fabric.Image(imgObj, {
+                    left: finalW / 2, top: finalH / 2,
+                    originX: 'center', originY: 'center',
+                    scaleX: previewScale, scaleY: previewScale
+                });
+                
+                canvas.setBackgroundImage(fabricImg, canvas.renderAll.bind(canvas));
+            };
+        };
+        reader.readAsDataURL(file);
+    };
+
+    // --- 3. 智能边缘取色 (代码未变) ---
+    function getSmartColor(imgElem) {
+        const c = document.createElement('canvas');
+        const ctx = c.getContext('2d');
+        c.width = 30; c.height = 30;
+        ctx.drawImage(imgElem, 0, 0, 30, 30);
+        const data = ctx.getImageData(0,0,30,30).data;
+        let r=0,g=0,b=0, count=0;
+        const positions = [0, 29, 30*29, 30*30-1]; 
+        for(let i of positions) {
+            const idx = i*4;
+            if(data[idx] !== undefined) { r+=data[idx]; g+=data[idx+1]; b+=data[idx+2]; count++; }
+        }
+        if(count===0) return '#ffffff';
+        return `rgb(${~~(r/count)}, ${~~(g/count)}, ${~~(b/count)})`;
+    }
+
+    // --- 4. 修改比例 (核心修复 - 代码未变) ---
+    btn34.onclick = () => {
+        if (is3to4Mode || !canvas.backgroundImage) return;
+        
+        const bgImg = canvas.backgroundImage;
+        const currentW = canvas.width;
+        const currentH = canvas.height;
+        const targetRatio = 3/4;
+        
+        let newW = currentW;
+        let newH = currentH;
+
+        if (currentW / currentH > targetRatio) {
+            newH = currentW / targetRatio;
+        } else {
+            newW = currentH * targetRatio;
+        }
+
+        let color = fillSelect.value;
+        if (color === 'smart') {
+            color = getSmartColor(bgImg.getElement());
+        }
+
+        canvas.setWidth(newW);
+        canvas.setHeight(newH);
+        canvas.setBackgroundColor(color, canvas.renderAll.bind(canvas));
+        
+        bgImg.set({
+            left: newW / 2, top: newH / 2,
+            originX: 'center', originY: 'center'
+        });
+        
+        canvas.requestRenderAll();
+        is3to4Mode = true;
+        btn34.textContent = "✅ 已调整";
+        btn34.disabled = true;
+        fillSelect.disabled = true;
+    };
+
+    // --- 5. 添加文本 (代码未变) ---
+    btnText.onclick = () => {
+        const text = new fabric.IText('双击编辑文字', {
+            left: canvas.width / 2, top: canvas.height / 2,
+            originX: 'center', originY: 'center',
+            fontFamily: "'Noto Sans SC', sans-serif",
+            fontSize: Math.max(20, canvas.width / 15),
+            fill: '#ffffff',
+            shadow: 'rgba(0,0,0,0.5) 2px 2px 4px',
+            cornerColor: '#007bff', cornerStyle: 'circle'
+        });
+        canvas.add(text);
+        canvas.setActiveObject(text);
+    };
+
+    // --- 6. 处理导出 (代码未变) ---
+    btnProcess.onclick = async () => {
+        canvas.discardActiveObject().renderAll();
+        btnProcess.disabled = true;
+        const oldText = btnProcess.textContent;
+        const zip = new JSZip();
+        
+        const watermarks = canvas.getObjects();
+        const pW = canvas.width;
+        const fillMode = fillSelect.value;
+
+        for(let i=0; i<originalFiles.length; i++) {
+            const file = originalFiles[i];
+            btnProcess.textContent = `⏳ 处理中... ${i+1}/${originalFiles.length}`;
+            try {
+                const blob = await processImage(file, watermarks, is3to4Mode, fillMode, pW);
+                zip.file(`watermark_${file.name}`, blob);
+            } catch(e) { console.error(e); }
+        }
+
+        btnProcess.textContent = "📦 正在打包...";
+        zip.generateAsync({type:"blob"}).then(blob => {
+            const url = URL.createObjectURL(blob);
+            downloadLink.href = url;
+            downloadLink.download = "images.zip";
+            downloadLink.textContent = "点击下载处理后的文件 (ZIP)";
+            downloadLink.click();
+            btnProcess.disabled = false;
+            btnProcess.textContent = oldText;
+        });
+    };
+
+    function processImage(file, watermarks, do34, fillMode, previewWidth) {
+        return new Promise(resolve => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    let w = img.width, h = img.height;
+                    if(do34) {
+                        const r = 3/4;
+                        if(w/h > r) h = w/r; else w = h*r;
+                    }
+
+                    const vc = new fabric.StaticCanvas(null, {width: w, height: h});
+                    let bgC = null;
+                    if(do34) {
+                        bgC = (fillMode === 'smart') ? getSmartColor(img) : fillMode;
+                    }
+                    vc.backgroundColor = bgC;
+
+                    const bg = new fabric.Image(img, {
+                        left: w/2, top: h/2, originX:'center', originY:'center'
+                    });
+                    vc.add(bg);
+
+                    const scale = w / previewWidth;
+                    if(watermarks.length) {
+                        watermarks.forEach(wm => {
+                            wm.clone(cloned => {
+                                cloned.set({
+                                    left: wm.left * scale, top: wm.top * scale,
+                                    scaleX: wm.scaleX * scale, scaleY: wm.scaleY * scale
+                                });
+                                vc.add(cloned);
+                            });
+                        });
+                    }
+                    setTimeout(() => {
+                        vc.renderAll();
+                        const data = vc.toDataURL({format:'jpeg', quality:0.92});
+                        fetch(data).then(r=>r.blob()).then(resolve);
+                    }, 10);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    // --- 7. 悬浮工具栏逻辑 (🆕 更新部分) ---
+    const floatBar = document.getElementById('float-bar');
+    
+    function updateFloatBar() {
+        const obj = canvas.getActiveObject();
+        if (obj && obj.type === 'i-text') {
+            floatBar.style.display = 'block';
+            
+            const bound = obj.getBoundingRect();
+            const toolbarH = floatBar.offsetHeight || 40;
+            
+            let top = bound.top - toolbarH - 10;
+            let left = bound.left + (bound.width/2) - (floatBar.offsetWidth/2);
+            
+            if(top < 0) top = bound.top + bound.height + 10;
+            if(left < 0) left = 10;
+            
+            floatBar.style.top = top + 'px';
+            floatBar.style.left = left + 'px';
+            
+            // 回显状态
+            document.getElementById('tool-color').value = obj.fill;
+            document.getElementById('tool-font').value = obj.fontFamily;
+            document.getElementById('tool-bold').classList.toggle('active', obj.fontWeight === 'bold');
+            
+            // 🆕 回显背景色 (如果有背景色，更新选择器；没有则默认黄色)
+            if (obj.backgroundColor) {
+                document.getElementById('tool-bg-color').value = obj.backgroundColor;
+            }
+        } else {
+            floatBar.style.display = 'none';
+        }
+    }
+
+    canvas.on('selection:created', updateFloatBar);
+    canvas.on('selection:updated', updateFloatBar);
+    canvas.on('selection:cleared', () => floatBar.style.display='none');
+    canvas.on('object:moving', updateFloatBar);
+    canvas.on('object:scaling', updateFloatBar);
+
+    // 现有事件
+    document.getElementById('tool-bold').onclick = () => {
+        const o = canvas.getActiveObject();
+        if(o) { o.set('fontWeight', o.fontWeight==='bold'?'normal':'bold'); canvas.renderAll(); updateFloatBar(); }
+    };
+    document.getElementById('tool-del').onclick = () => {
+        const o = canvas.getActiveObjects();
+        if(o.length) { canvas.discardActiveObject(); canvas.remove(...o); canvas.renderAll(); }
+    };
+    document.getElementById('tool-color').oninput = (e) => {
+        const o = canvas.getActiveObject();
+        if(o) { o.set('fill', e.target.value); canvas.renderAll(); }
+    };
+    document.getElementById('tool-font').onchange = (e) => {
+        const o = canvas.getActiveObject();
+        if(o) { o.set('fontFamily', e.target.value); canvas.renderAll(); }
+    };
+
+    // 🆕 新增事件：背景色
+    document.getElementById('tool-bg-color').oninput = (e) => {
+        const o = canvas.getActiveObject();
+        if(o) { 
+            o.set('backgroundColor', e.target.value); 
+            canvas.renderAll(); 
+        }
+    };
+
+    // 🆕 新增事件：清除背景
+    document.getElementById('tool-bg-clear').onclick = () => {
+        const o = canvas.getActiveObject();
+        if(o) { 
+            o.set('backgroundColor', ''); // 设置为空字符串即可移除背景
+            canvas.renderAll(); 
+        }
+    };
+});
+</script>
+</body>
+</html>
