@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>批量图片加水印工具</title>
     <style>
-        /* style.css (v10 - 稳定版) */
+        /* style.css (v11 - 最终修复版) */
         :root { --primary-color: #28a745; --primary-hover-color: #218838; --border-color: #e0e0e0; --background-color: #f8f9fa; --card-background-color: #ffffff; --text-color: #333; --muted-text-color: #6c757d; --error-color: #dc3545; --font-family: 'Helvetica Neue', Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; }
         body { font-family: var(--font-family); background-color: var(--background-color); color: var(--text-color); margin: 0; padding: 1rem; font-size: 14px; }
         .container { max-width: 1200px; margin: 0 auto; padding: 0; }
@@ -45,7 +45,7 @@
         #progress-bar-container { width: 100%; background-color: #e9ecef; border-radius: 4px; margin-top: 1rem; overflow: hidden; height: 10px; }
         #progress-bar { width: 0; height: 100%; background-color: var(--primary-color); transition: width 0.3s ease; }
         #status-message { margin-top: 0.5rem; color: var(--muted-text-color); text-align: center; min-height: 20px; }
-        #status-message.error { color: var(--error-color); }
+        #status-message.error { color: var(--error-color); font-weight: bold;}
         #download-section { margin-top: 1rem; }
         #version-tag { font-size: 0.8rem; color: var(--muted-text-color); font-weight: normal; vertical-align: middle; margin-left: 8px; }
     </style>
@@ -65,7 +65,7 @@
         <section id="settings-section" class="card">
             <h2>2. 水印与输出设置</h2>
             <div class="controls-grid">
-                <div class="form-group" style="grid-column: 1 / -1;"><label for="watermark-text">水印文本</label><input type="text" id="watermark-text" value="请勿外传"></div>
+                <div class="form-group" style="grid-column: 1 / -1;"><label for="watermark-text">水印文本 (可用 \n 手动换行)</label><input type="text" id="watermark-text" value="洋宝儿影视"></div>
                 <div class="form-group"><label for="font-family">字体</label><select id="font-family"><option value="SimHei">黑体</option><option value="SimSun">宋体</option><option value="KaiTi">楷体</option><option value="FangSong">仿宋</option><option value="Microsoft YaHei">微软雅黑</option><option value="Arial">Arial</option></select></div>
                 <div class="form-group"><label for="font-size">字号 (px)</label><input type="number" id="font-size" value="40" min="1"></div>
                 <div class="form-group"><label>字体颜色</label><div class="color-input-container"><input type="color" id="font-color" value="#FFFFFF"><input type="text" id="font-color-text" value="#FFFFFF"></div></div>
@@ -112,27 +112,10 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
-        const APP_VERSION = "v10 (稳定版)";
+        const APP_VERSION = "v11 (最终修复版)";
 
-        // --- Web Worker 脚本 (v10 - 核心逻辑修复) ---
+        // --- Web Worker 脚本 (v11 - 逻辑完全统一) ---
         const workerCode = `
-        function wrapText(context, text, maxWidth, fontSize, fontFamily, isBold, isItalic) {
-            const words = text.split(''); let line = '', lines = [];
-            let fontStyle = \`\${isItalic ? 'italic ' : ''}\${isBold ? 'bold ' : ''}\${fontSize}px \${fontFamily}\`;
-            context.font = fontStyle;
-            for (let n = 0; n < words.length; n++) {
-                let testLine = line + words[n];
-                // 修复v9的bug：maxWidth为Infinity时不应换行，但这里要用真实的maxWidth
-                if (maxWidth !== Infinity && context.measureText(testLine).width > maxWidth && n > 0) {
-                    lines.push({ text: line });
-                    line = words[n];
-                } else {
-                    line = testLine;
-                }
-            }
-            lines.push({ text: line });
-            return { lines, totalTextHeight: lines.length * (fontSize * 1.2) };
-        }
         function drawWatermark(context, watermark) {
             context.save();
             const centerX = watermark.x + watermark.width / 2, centerY = watermark.y + watermark.height / 2;
@@ -140,31 +123,29 @@
             context.rotate(watermark.rotation * Math.PI / 180);
             context.translate(-centerX, -centerY);
             
-            // 修复v9的bug：背景和文字的透明度分开设置
             if (watermark.backgroundOpacity > 0) {
-                context.globalAlpha = watermark.backgroundOpacity; // 仅用于背景
+                context.globalAlpha = watermark.backgroundOpacity;
                 context.fillStyle = watermark.backgroundColor;
                 context.fillRect(watermark.x, watermark.y, watermark.width, watermark.height);
             }
             
-            context.globalAlpha = watermark.opacity; // 仅用于文字
+            context.globalAlpha = watermark.opacity;
             let fontStyle = \`\${watermark.isItalic ? 'italic ' : ''}\${watermark.isBold ? 'bold ' : ''}\${watermark.fontSize}px \${watermark.fontFamily}\`;
             context.font = fontStyle;
             context.fillStyle = watermark.fontColor;
             context.textAlign = watermark.textAlign;
             context.textBaseline = 'middle';
             
-            // 修复v9的bug：传递正确的maxWidth用于换行
-            const wrapped = wrapText(context, watermark.text, watermark.width - watermark.padding * 2, watermark.fontSize, watermark.fontFamily, watermark.isBold, watermark.isItalic);
-            
+            const lines = watermark.text.split('\\n');
             const lineHeight = watermark.fontSize * 1.2;
-            let startTextY = watermark.y + watermark.height / 2 - wrapped.totalTextHeight / 2 + lineHeight / 2;
+            const totalTextHeight = lines.length * lineHeight;
+            let startTextY = watermark.y + watermark.height / 2 - totalTextHeight / 2 + lineHeight / 2;
             
-            wrapped.lines.forEach((lineObj, i) => {
+            lines.forEach((line, i) => {
                 let textX = (watermark.textAlign === 'center') ? (watermark.x + watermark.width / 2) : (watermark.x + watermark.padding);
-                context.fillText(lineObj.text, textX, startTextY + i * lineHeight);
+                context.fillText(line, textX, startTextY + i * lineHeight);
                 if (watermark.isUnderline) {
-                    const metrics = context.measureText(lineObj.text);
+                    const metrics = context.measureText(line);
                     const underlineY = startTextY + i * lineHeight + watermark.fontSize / 2 + 2;
                     let underlineStartX = (watermark.textAlign === 'center') ? (textX - metrics.width / 2) : textX;
                     context.strokeStyle = watermark.fontColor;
@@ -224,7 +205,7 @@
         const redbookModeBtn = get('redbook-mode-btn'), redbookOptionsGroup = get('redbook-options-group'), redbookBgModeGroup = get('redbook-bg-mode-group'), redbookBackgroundColor = get('redbook-background-color'), redbookBackgroundColorText = get('redbook-background-color-text');
         const tweakModeBtn = get('tweak-mode-btn'), tweakAmountGroup = get('tweak-amount-group'), tweakAmount = get('tweak-amount'), outputQuality = get('output-quality');
 
-        let uploadedFiles = [], previewImage = new Image(), watermarks = [], selectedWatermarkIndex = -1, isDragging = false, dragOffsetX, dragOffsetY, isResizing = false;
+        let uploadedFiles = [], previewImage = new Image(), watermarks = [], selectedWatermarkIndex = -1, isDragging = false, dragOffsetX, dragOffsetY;
         let currentRedBookBgMode = 'edge';
         const tempCtx = document.createElement('canvas').getContext('2d');
 
@@ -285,30 +266,29 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             if (redbookModeBtn.classList.contains('active') && bgColor !== 'rgba(0,0,0,0)') { ctx.fillStyle = bgColor; ctx.fillRect(0, 0, canvas.width, canvas.height); }
             ctx.drawImage(previewImage, drawX, drawY, previewImage.width, previewImage.height);
-            watermarks.forEach((wm, index) => drawWatermark(ctx, wm, index === selectedWatermarkIndex));
+            watermarks.forEach((wm, index) => drawWatermarkOnPreview(wm, index === selectedWatermarkIndex));
         }
 
-        // 使用Web Worker中的同名函数进行绘制，保持主线程和Worker一致
-        const drawWatermark = (context, watermark, isSelected) => {
+        const drawWatermarkOnPreview = (watermark, isSelected) => {
             const workerDrawFn = new Function(`return ${workerCode}`)().drawWatermark;
-            workerDrawFn(context, watermark);
+            workerDrawFn(ctx, watermark);
             if (isSelected) {
-                context.save();
+                ctx.save();
                 const centerX = watermark.x + watermark.width / 2, centerY = watermark.y + watermark.height / 2;
-                context.translate(centerX, centerY);
-                context.rotate(watermark.rotation * Math.PI / 180);
-                context.translate(-centerX, -centerY);
-                context.strokeStyle = 'rgba(0, 123, 255, 0.9)';
-                context.lineWidth = 2;
-                context.strokeRect(watermark.x, watermark.y, watermark.width, watermark.height);
-                context.restore();
+                ctx.translate(centerX, centerY);
+                ctx.rotate(watermark.rotation * Math.PI / 180);
+                ctx.translate(-centerX, -centerY);
+                ctx.strokeStyle = 'rgba(0, 123, 255, 0.9)';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(watermark.x, watermark.y, watermark.width, watermark.height);
+                ctx.restore();
             }
         };
         
         function autoFitWatermarkBox(wm) {
             let fontStyle = `${wm.isItalic ? 'italic ' : ''}${wm.isBold ? 'bold ' : ''}${wm.fontSize}px ${wm.fontFamily}`;
             tempCtx.font = fontStyle;
-            const lines = wm.text.split('\\n'); // 支持手动换行符
+            const lines = wm.text.split('\n');
             const totalTextHeight = lines.length * (wm.fontSize * 1.2);
             const maxWidth = Math.max(...lines.map(l => tempCtx.measureText(l).width));
             
@@ -323,7 +303,7 @@
         }
 
         function addDefaultWatermark() { 
-            const wm = { text: '请勿外传', x: 150, y: 150, width: 0, height: 0, fontSize: 40, fontFamily: 'SimHei', fontColor: '#FFFFFF', opacity: 0.5, rotation: 0, padding: 20, backgroundColor: '#000000', backgroundOpacity: 1, isBold: false, isItalic: false, isUnderline: false, textAlign: 'left' };
+            const wm = { text: '洋宝儿影视', x: 150, y: 150, width: 0, height: 0, fontSize: 40, fontFamily: 'SimHei', fontColor: '#FFFFFF', opacity: 0.5, rotation: 0, padding: 20, backgroundColor: '#000000', backgroundOpacity: 1, isBold: false, isItalic: false, isUnderline: false, textAlign: 'left' };
             autoFitWatermarkBox(wm);
             watermarks.push(wm);
             selectedWatermarkIndex = 0; 
@@ -397,7 +377,7 @@
         function handleCanvasMouseDown(e) { const pos = getMousePos(e); for (let i = watermarks.length - 1; i >= 0; i--) { const wm = watermarks[i]; if (pos.x >= wm.x && pos.x <= wm.x + wm.width && pos.y >= wm.y && pos.y <= wm.y + wm.height) { isDragging = true; dragOffsetX = pos.x - wm.x; dragOffsetY = pos.y - wm.y; selectedWatermarkIndex = i; updateAllControls(); return; } } selectedWatermarkIndex = -1; drawCanvas(); }
         function handleCanvasMouseMove(e) { const pos = getMousePos(e); if (isDragging && selectedWatermarkIndex !== -1) { const wm = watermarks[selectedWatermarkIndex]; wm.x = pos.x - dragOffsetX; wm.y = pos.y - dragOffsetY; drawCanvas(); } else { updateCursor(pos); } }
         function updateCursor(pos) { let cursor = 'default'; for (let i = watermarks.length-1; i >= 0; i--) { const wm = watermarks[i]; if (pos.x >= wm.x && pos.x <= wm.x + wm.width && pos.y >= wm.y && pos.y <= wm.y+wm.height) { cursor = 'move'; break; } } canvas.style.cursor = cursor; }
-        function handleCanvasMouseUp() { isDragging = false; isResizing = false; }
+        function handleCanvasMouseUp() { isDragging = false; }
         function toggleRedBookMode() { const isActive = redbookModeBtn.classList.toggle('active'); redbookModeBtn.textContent = isActive ? '开' : '关'; redbookOptionsGroup.style.display = isActive ? 'flex' : 'none'; drawCanvas(); }
         function handleRedBookBgModeChange(e) { if (e.target.tagName !== 'BUTTON') return; const mode = e.target.dataset.mode; currentRedBookBgMode = mode; document.querySelectorAll('#redbook-options-wrapper .toggle-button').forEach(btn => btn.classList.toggle('active', btn.dataset.mode === mode)); drawCanvas(); }
         function toggleTweakMode() { const isActive = tweakModeBtn.classList.toggle('active'); tweakModeBtn.textContent = isActive ? '开' : '关'; tweakAmountGroup.style.display = isActive ? 'flex' : 'none'; }
@@ -414,7 +394,8 @@
                     downloadSection.appendChild(link); downloadSection.appendChild(document.createElement('br'));
                     if (isLast) { statusMessage.textContent = '所有图片处理完成！'; processButton.disabled = false; }
                 } else if (type === 'error') {
-                    statusMessage.textContent = message; statusMessage.className = 'error';
+                    statusMessage.textContent = `错误: ${message}`;
+                    statusMessage.className = 'error';
                     if (isLast) { processButton.disabled = false; }
                 }
             };
