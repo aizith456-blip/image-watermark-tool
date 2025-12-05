@@ -3,56 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>水印编辑器 v19.0 (独立编辑+三栏布局)</title>
+    <title>水印编辑器 v20.0 (导出修复版)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&family=Noto+Serif+SC:wght@700&family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
     
     <style>
         body { font-family: 'Noto Sans SC', sans-serif; margin: 0; height: 100vh; overflow: hidden; background-color: #f0f2f5; }
-        
-        /* --- 1. 三栏布局结构 --- */
         .layout { display: flex; height: 100%; width: 100%; }
 
-        /* 左侧：图片列表 (垂直滚动) */
-        .left-sidebar {
-            width: 110px; flex-shrink: 0; background: #fff; border-right: 1px solid #ddd;
-            display: flex; flex-direction: column; z-index: 20;
-        }
-        .thumb-list {
-            flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 10px;
-        }
+        /* 左侧：图片列表 */
+        .left-sidebar { width: 110px; flex-shrink: 0; background: #fff; border-right: 1px solid #ddd; display: flex; flex-direction: column; z-index: 20; }
+        .thumb-list { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 10px; }
         .thumb-header { padding: 10px; text-align: center; font-size: 12px; color: #888; border-bottom: 1px solid #eee; background: #f9f9f9; }
 
-        /* 中间：画布区域 (自适应) */
-        .workspace { 
-            flex: 1; display: flex; justify-content: center; align-items: center; 
-            background-color: #e0e0e0; 
-            background-image: radial-gradient(#aaa 1px, transparent 1px); background-size: 20px 20px; 
-            position: relative; overflow: hidden; padding: 20px;
-        }
+        /* 中间：画布区域 */
+        .workspace { flex: 1; display: flex; justify-content: center; align-items: center; background-color: #e0e0e0; background-image: radial-gradient(#aaa 1px, transparent 1px); background-size: 20px 20px; position: relative; overflow: hidden; padding: 20px; }
         .canvas-box { box-shadow: 0 8px 30px rgba(0,0,0,0.25); background: white; transition: all 0.2s; }
 
-        /* 右侧：功能控制区 */
-        .right-sidebar { 
-            width: 300px; flex-shrink: 0; background: white; border-left: 1px solid #ddd; 
-            display: flex; flex-direction: column; padding: 20px; z-index: 20; 
-            overflow-y: auto; box-shadow: -2px 0 10px rgba(0,0,0,0.05);
-        }
+        /* 右侧：功能区 */
+        .right-sidebar { width: 300px; flex-shrink: 0; background: white; border-left: 1px solid #ddd; display: flex; flex-direction: column; padding: 20px; z-index: 20; overflow-y: auto; }
 
-        /* --- 组件样式 --- */
-        .thumb-item {
-            position: relative; width: 100%; aspect-ratio: 1; border-radius: 6px; 
-            border: 2px solid transparent; cursor: pointer; background: #eee;
-        }
+        /* 组件样式 */
+        .thumb-item { position: relative; width: 100%; aspect-ratio: 1; border-radius: 6px; border: 2px solid transparent; cursor: pointer; background: #eee; }
         .thumb-item img { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
         .thumb-item.active { border-color: #007bff; box-shadow: 0 0 0 2px rgba(0,123,255,0.2); }
-        .btn-delete {
-            position: absolute; top: -5px; right: -5px; width: 18px; height: 18px;
-            background: #ff4d4f; color: white; border-radius: 50%; display: flex;
-            align-items: center; justify-content: center; font-size: 12px; cursor: pointer;
-            opacity: 0; transition: opacity 0.2s;
-        }
+        .btn-delete { position: absolute; top: -5px; right: -5px; width: 18px; height: 18px; background: #ff4d4f; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; opacity: 0; transition: opacity 0.2s; }
         .thumb-item:hover .btn-delete { opacity: 1; }
 
         h2 { margin: 0 0 20px 0; font-size: 18px; border-bottom: 2px solid #f0f0f0; padding-bottom: 15px; color: #333; }
@@ -78,26 +54,18 @@
 <body>
 
 <div class="layout">
-    <!-- 1. 左侧：缩略图列表 -->
     <div class="left-sidebar">
         <div class="thumb-header" id="count-label">0 张图片</div>
-        <div class="thumb-list" id="thumb-list">
-            <!-- 动态生成 -->
-        </div>
+        <div class="thumb-list" id="thumb-list"></div>
         <div style="padding:10px;">
-            <button class="btn" style="font-size:12px; margin:0;" onclick="document.getElementById('file-input').click()">
-                + 加图
-            </button>
+            <button class="btn" style="font-size:12px; margin:0;" onclick="document.getElementById('file-input').click()">+ 加图</button>
         </div>
     </div>
 
-    <!-- 2. 中间：画布 -->
     <div class="workspace" id="workspace">
         <div class="canvas-box">
             <canvas id="c"></canvas>
         </div>
-        
-        <!-- 悬浮工具栏 -->
         <div id="float-bar" class="floating-tools">
             <div class="tool-row">
                 <select id="tool-font" style="font-size:12px; width:80px;">
@@ -115,23 +83,18 @@
         </div>
     </div>
 
-    <!-- 3. 右侧：功能区 -->
     <div class="right-sidebar">
         <h2>水印编辑器 Pro</h2>
-        
         <input type="file" id="file-input" accept="image/*" multiple style="display:none">
-
         <div class="panel">
-            <div style="font-weight:bold; margin-bottom:8px; font-size:13px; color:#555;">设置 (自动继承)</div>
+            <div style="font-weight:bold; margin-bottom:8px; font-size:13px; color:#555;">画布设置</div>
             <div style="display:flex; gap:8px;">
                 <select id="fill-mode" style="flex:1; padding:10px; border-radius:6px; border:1px solid #ddd;">
                     <option value="smart">🎨 智能吸色</option>
-                    <option value="#ffffff">⬜ 白色</option>
+                    <option value="#ffffff" selected>⬜ 白色</option>
                     <option value="#000000">⬛ 黑色</option>
                 </select>
-                <button class="btn" id="btn-34" style="flex:1; margin:0;">
-                    📐 3:4
-                </button>
+                <button class="btn" id="btn-34" style="flex:1; margin:0;">📐 3:4</button>
             </div>
             <label class="hd-switch">
                 <input type="checkbox" id="hd-toggle" checked>
@@ -139,15 +102,11 @@
                 <span class="hd-tag">HD</span>
             </label>
         </div>
-
         <div class="panel">
             <button class="btn" id="btn-text">🅰️ 添加文本</button>
         </div>
-
         <div style="margin-top:auto;">
-            <button class="btn btn-primary" id="btn-process" disabled>
-                🚀 导出全部图片
-            </button>
+            <button class="btn btn-primary" id="btn-process" disabled>🚀 导出全部图片</button>
             <div id="download-area" style="text-align:center; margin-top:10px; font-size:13px;"></div>
         </div>
     </div>
@@ -155,74 +114,47 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // Fabric 初始化
     const canvas = new fabric.Canvas('c', { backgroundColor: '#fff', preserveObjectStacking: true });
     
-    // DOM 元素
+    // DOM 引用
     const fileInput = document.getElementById('file-input');
     const thumbList = document.getElementById('thumb-list');
     const countLabel = document.getElementById('count-label');
     const workspace = document.getElementById('workspace');
-    
     const btn34 = document.getElementById('btn-34');
     const fillSelect = document.getElementById('fill-mode');
     const hdToggle = document.getElementById('hd-toggle');
     const btnText = document.getElementById('btn-text');
     const btnProcess = document.getElementById('btn-process');
     
-    // --- 核心数据结构 ---
-    let allFiles = []; // 存储 File 对象
-    
-    // 存储每张图片的状态配置
-    // 结构: { [index]: { fabricJSON: object, is34: boolean, fillMode: string } }
+    let allFiles = []; 
     let imageConfigs = {}; 
-    
-    let currentIndex = -1; // 当前正在编辑的索引
-    let currentRawImg = null; // 当前的原生图片对象
-    let currentIs34 = false; // 当前视图的 3:4 状态
-    
-    // --- 1. 布局自适应 (始终居中) ---
+    let currentIndex = -1; 
+    let currentRawImg = null; 
+    let currentIs34 = false; 
+
+    // 自适应画布
     function fitCanvasToScreen() {
         if (!currentRawImg) return;
-        
-        // 获取实际图片在当前模式下的尺寸
-        let w = currentRawImg.width;
-        let h = currentRawImg.height;
+        let w = currentRawImg.width, h = currentRawImg.height;
         if (currentIs34) {
-            if (w/h > 0.75) h = w / 0.75;
-            else w = h * 0.75;
+            if (w/h > 0.75) h = w / 0.75; else w = h * 0.75;
         }
-
-        // 获取容器大小 (减去边距)
         const boxW = workspace.clientWidth - 40;
         const boxH = workspace.clientHeight - 40;
-        
-        // 计算缩放
-        const scale = Math.min(boxW / w, boxH / h, 1); // 限制最大1倍，防止过度放大模糊
-        
+        const scale = Math.min(boxW / w, boxH / h, 1);
         canvas.setWidth(w * scale);
         canvas.setHeight(h * scale);
         canvas.setZoom(scale);
-        
-        // 渲染背景
         renderBackground(w, h);
     }
-    
-    // 监听窗口缩放
     window.addEventListener('resize', fitCanvasToScreen);
 
-    // --- 2. 状态管理 (保存与加载) ---
-    
-    // 保存当前画布状态到 imageConfigs
+    // 保存状态
     function saveCurrentState() {
         if (currentIndex === -1) return;
-        
-        // 序列化画布上的对象（不包含背景图，只包含文字/贴纸）
-        const json = canvas.toJSON(['id', 'selectable', 'name']);
-        // 移除背景图配置，因为背景图是动态加载的
-        delete json.backgroundImage;
-        delete json.background;
-
+        const json = canvas.toJSON(['id', 'selectable', 'name', 'backgroundColor']);
+        delete json.backgroundImage; 
         imageConfigs[currentIndex] = {
             fabricJSON: json,
             is34: currentIs34,
@@ -230,13 +162,9 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    // 加载指定图片
+    // 加载图片
     function loadImage(index) {
-        // 1. 如果当前有图片，先保存它的状态
-        if (currentIndex !== -1) {
-            saveCurrentState();
-        }
-
+        if (currentIndex !== -1) saveCurrentState();
         const file = allFiles[index];
         if (!file) return;
 
@@ -249,35 +177,15 @@ document.addEventListener('DOMContentLoaded', () => {
             img.src = e.target.result;
             img.onload = () => {
                 currentRawImg = img;
-                
-                // 2. 决定使用什么配置
-                // 如果这张图之前编辑过，加载它的配置
-                // 如果没编辑过，继承“当前”的配置（实现批量添加的效果）
                 if (imageConfigs[index]) {
-                    // 加载已有配置
                     const conf = imageConfigs[index];
                     currentIs34 = conf.is34;
-                    fillSelect.value = conf.fillMode; // 恢复UI
-                    loadCanvasObjects(conf.fabricJSON);
-                } else {
-                    // *** 关键逻辑：继承 ***
-                    // 如果不是第一张图，尝试继承上一张图的状态
-                    // 这样你加了一个水印，切到下一张，水印还在
-                    // 但位置是基于上一张的，你可以单独微调
-                    
-                    // 保持当前的 currentIs34 不变 (实现了3:4模式的锁定)
-                    // 保持 canvas 上的对象不变 (Fabric不清除对象，只是换背景)
-                    
-                    // 这里我们不需要做任何特殊操作，
-                    // 因为我们还没有 clear() 画布对象，它们保留在画布上
-                    // 只是换了底图。这正是我们想要的效果！
-                    
-                    // 唯一要注意的是，如果上一张是横图，这张是竖图，
-                    // 水印位置可能会跑偏。
-                    // 简单的处理是保持相对位置，这里为了稳健，我们保留 Fabric 的绝对坐标，
-                    // 让用户自己拖动（符合“单独修改”的需求）。
+                    fillSelect.value = conf.fillMode;
+                    canvas.clear();
+                    if(conf.fabricJSON && conf.fabricJSON.objects) {
+                        canvas.loadFromJSON(conf.fabricJSON, canvas.renderAll.bind(canvas));
+                    }
                 }
-                
                 updateUIState();
                 fitCanvasToScreen();
             };
@@ -285,103 +193,61 @@ document.addEventListener('DOMContentLoaded', () => {
         reader.readAsDataURL(file);
     }
 
-    // 辅助：加载对象到画布
-    function loadCanvasObjects(json) {
-        canvas.clear(); // 清空当前对象
-        if (json && json.objects) {
-            canvas.loadFromJSON(json, () => {
-                canvas.requestRenderAll();
-            });
-        }
-    }
-
-    // 渲染背景 (核心)
     function renderBackground(targetW, targetH) {
         if (!currentRawImg) return;
-        
         let bgColor = '#fff';
         if (currentIs34) {
             const mode = fillSelect.value;
             bgColor = (mode === 'smart') ? getSmartColor(currentRawImg) : mode;
         }
-        
-        canvas.backgroundColor = bgColor;
-        
-        // 居中背景图
+        canvas.backgroundColor = bgColor; // 预览时设置背景色
         const imgInstance = new fabric.Image(currentRawImg, {
             originX: 'center', originY: 'center',
-            left: targetW / 2,
-            top: targetH / 2
+            left: targetW / 2, top: targetH / 2
         });
-        
-        // 这里的坐标是逻辑坐标，Fabric的Zoom会处理显示缩放
         canvas.setBackgroundImage(imgInstance, canvas.requestRenderAll.bind(canvas));
     }
 
-    // 更新 UI 按钮状态
     function updateUIState() {
         if (currentIs34) {
             btn34.textContent = "✅ 3:4 (已开)";
             btn34.style.background = "#e6fffa";
             btn34.style.borderColor = "#00bfa5";
         } else {
-            btn34.textContent = "📐 3:4 (小红书)";
+            btn34.textContent = "📐 3:4";
             btn34.style.background = "#fff";
             btn34.style.borderColor = "#ddd";
         }
     }
 
-    // --- 3. 图片列表 UI ---
     function renderThumbList() {
         thumbList.innerHTML = '';
         countLabel.textContent = `${allFiles.length} 张图片`;
-        
-        if (allFiles.length === 0) {
-            btnProcess.disabled = true;
-            return;
-        }
+        if (allFiles.length === 0) { btnProcess.disabled = true; return; }
         btnProcess.disabled = false;
-
         allFiles.forEach((file, idx) => {
             const div = document.createElement('div');
             div.className = `thumb-item ${idx === currentIndex ? 'active' : ''}`;
-            
             const img = document.createElement('img');
             img.src = URL.createObjectURL(file);
-            
             const del = document.createElement('div');
             del.className = 'btn-delete';
             del.textContent = '×';
             del.onclick = (e) => { e.stopPropagation(); deleteImage(idx); };
-            
             div.onclick = () => loadImage(idx);
-            
-            div.appendChild(img);
-            div.appendChild(del);
-            thumbList.appendChild(div);
+            div.appendChild(img); div.appendChild(del); thumbList.appendChild(div);
         });
-        
-        // 滚动到底部 (如果是新加的)
-        // thumbList.scrollTop = thumbList.scrollHeight;
     }
 
     function updateThumbUI() {
         const items = thumbList.querySelectorAll('.thumb-item');
         items.forEach((item, idx) => {
-            if (idx === currentIndex) item.classList.add('active');
-            else item.classList.remove('active');
+            if (idx === currentIndex) item.classList.add('active'); else item.classList.remove('active');
         });
     }
 
     function deleteImage(index) {
-        // 删除数据
         allFiles.splice(index, 1);
-        
-        // 删除对应的配置 (需要重组配置对象的键值，比较麻烦)
-        // 简单做法：直接清空配置，或者保留错位（由于逻辑是基于index的，重排后确实会错位）
-        // 完美做法是基于 file.name 或 ID，但这里基于 index 简化
-        // 我们简单处理：重新映射 imageConfigs
-        // (在生产环境中建议给每个文件分配唯一ID)
         let newConfigs = {};
         Object.keys(imageConfigs).forEach(k => {
             let oldIdx = parseInt(k);
@@ -389,77 +255,50 @@ document.addEventListener('DOMContentLoaded', () => {
             if (oldIdx > index) newConfigs[oldIdx - 1] = imageConfigs[oldIdx];
         });
         imageConfigs = newConfigs;
-
-        // 逻辑跳转
-        if (allFiles.length === 0) {
-            currentIndex = -1;
-            currentRawImg = null;
-            canvas.clear();
-        } else {
-            // 如果删除的是当前张，加载前一张或第一张
-            if (index === currentIndex) {
-                loadImage(Math.max(0, index - 1));
-            } else if (index < currentIndex) {
-                currentIndex--; // 修正索引
-            }
-        }
+        if (allFiles.length === 0) { currentIndex = -1; currentRawImg = null; canvas.clear(); }
+        else { if (index === currentIndex) loadImage(Math.max(0, index - 1)); else if (index < currentIndex) currentIndex--; }
         renderThumbList();
     }
 
     fileInput.onchange = (e) => {
         if (!e.target.files.length) return;
-        const newFiles = Array.from(e.target.files);
-        allFiles = allFiles.concat(newFiles);
-        
+        allFiles = allFiles.concat(Array.from(e.target.files));
         renderThumbList();
-        
-        // 如果是首次添加，加载第一张
-        if (currentIndex === -1) {
-            loadImage(0);
-        }
+        if (currentIndex === -1) loadImage(0);
         fileInput.value = '';
     };
 
-    // --- 4. 功能逻辑 ---
-    
-    // 3:4 切换
     btn34.onclick = () => {
         if (!currentRawImg) return;
-        currentIs34 = !currentIs34; // 切换状态
-        updateUIState();
-        fitCanvasToScreen(); // 重新计算尺寸
+        currentIs34 = !currentIs34; 
+        updateUIState(); fitCanvasToScreen(); 
     };
 
-    // 添加文本
     btnText.onclick = () => {
         const t = new fabric.IText('输入文字', {
-            left: canvas.width / 2 / canvas.getZoom(), // 考虑Zoom
+            left: canvas.width / 2 / canvas.getZoom(),
             top: canvas.height / 2 / canvas.getZoom(),
             originX:'center', originY:'center',
-            fontFamily: "'Noto Sans SC', sans-serif",
-            fontSize: 40, fill: '#fff',
-            cornerColor: '#007bff', cornerStyle:'circle'
+            fontFamily: "'Noto Sans SC', sans-serif", fontSize: 40, fill: '#fff',
+            cornerColor: '#007bff', cornerStyle:'circle',
+            shadow: 'rgba(0,0,0,0.5) 2px 2px 4px'
         });
-        canvas.add(t);
-        canvas.setActiveObject(t);
+        canvas.add(t); canvas.setActiveObject(t);
     };
 
-    // 智能吸色
     function getSmartColor(img) {
         const c = document.createElement('canvas'); c.width=30; c.height=30;
         const x = c.getContext('2d'); x.drawImage(img,0,0,30,30);
         const d = x.getImageData(0,0,30,30).data;
         let r=0,g=0,b=0,n=0;
-        const p=[0,29,870,899]; // 4 corners
+        const p=[0,29,870,899]; 
         p.forEach(i=>{ if(d[i*4+3]>0){r+=d[i*4];g+=d[i*4+1];b+=d[i*4+2];n++} });
         return n?`rgb(${~~(r/n)},${~~(g/n)},${~~(b/n)})`:'#fff';
     }
 
-    // --- 5. 导出逻辑 (支持批量+独立配置) ---
+    // --- 修复版导出逻辑 ---
     btnProcess.onclick = async () => {
-        // 先保存当前正在编辑的图片状态
         saveCurrentState();
-        
         canvas.discardActiveObject().renderAll();
         btnProcess.disabled = true;
         const dlArea = document.getElementById('download-area');
@@ -468,38 +307,30 @@ document.addEventListener('DOMContentLoaded', () => {
         const zip = new JSZip();
         const isHD = hdToggle.checked;
         
-        // 为了批量处理，我们需要知道那些“没被点击过”的图片应该用什么配置
-        // 策略：使用“当前最后停留的配置”作为默认模板
         const templateConfig = {
-            fabricJSON: canvas.toJSON(['id']),
+            fabricJSON: canvas.toJSON(['id', 'backgroundColor']),
             is34: currentIs34,
             fillMode: fillSelect.value
         };
-        // 再次移除背景以免重复
         delete templateConfig.fabricJSON.backgroundImage;
 
         for (let i = 0; i < allFiles.length; i++) {
             const file = allFiles[i];
             dlArea.innerHTML = `处理中 (${i+1}/${allFiles.length})`;
-            
-            // 获取配置：如果有独立配置用独立的，没有就用模板
             const conf = imageConfigs[i] || templateConfig;
             
             try {
                 const blob = await processOne(file, conf, isHD);
-                zip.file(`xhs_${file.name}`, blob);
+                zip.file(`xhs_${file.name.replace(/\.[^/.]+$/, "")}.jpg`, blob);
             } catch(e) { console.error(e); }
         }
         
         dlArea.innerHTML = '📦 正在打包...';
         const content = await zip.generateAsync({type:"blob"});
         const url = URL.createObjectURL(content);
-        
         const a = document.createElement('a');
         a.href = url; a.download = "images.zip"; a.innerText = "点击下载 ZIP";
-        dlArea.innerHTML = '';
-        dlArea.appendChild(a);
-        a.click();
+        dlArea.innerHTML = ''; dlArea.appendChild(a); a.click();
         btnProcess.disabled = false;
     };
 
@@ -509,27 +340,24 @@ document.addEventListener('DOMContentLoaded', () => {
             reader.onload = (e) => {
                 const img = new Image();
                 img.onload = () => {
-                    // 1. 确定尺寸
                     let w = img.width, h = img.height;
                     let scale = 1;
                     if(isHD && w < 1080) { scale = 1080/w; w=1080; h=Math.round(h*scale); }
                     
                     let fw = w, fh = h;
-                    if(config.is34) {
-                        if(fw/fh > 0.75) fh = fw / 0.75; else fw = fh * 0.75;
-                    }
+                    if(config.is34) { if(fw/fh > 0.75) fh = fw / 0.75; else fw = fh * 0.75; }
                     
-                    // 2. 绘图
+                    // 1. 创建静态画布
                     const vc = new fabric.StaticCanvas(null, {width:fw, height:fh});
                     
-                    // 背景色
+                    // 2. 明确设置背景色 (防止PNG变黑)
                     let bgC = '#fff';
                     if(config.is34) {
                         bgC = (config.fillMode === 'smart') ? getSmartColor(img) : config.fillMode;
                     }
                     vc.backgroundColor = bgC;
                     
-                    // 背景图
+                    // 3. 添加原图 (作为普通对象添加，避免被 loadFromJSON 清除)
                     const bgImg = new fabric.Image(img, {
                         originX:'center', originY:'center',
                         left:fw/2, top:fh/2,
@@ -537,45 +365,24 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                     vc.add(bgImg);
                     
-                    // 3. 加载水印对象
-                    // 需要计算水印的缩放比例 (相对于编辑时的画布)
-                    // 这是一个难点，因为编辑时的画布是动态 fitCanvasToScreen 的
-                    // 但 Fabric 保存的 JSON 坐标是基于 canvas.width/height (逻辑尺寸) 的
-                    // 我们的 fitCanvasToScreen 实际上修改了 canvas 的逻辑尺寸
-                    
-                    // 简单策略：我们假设水印是相对于图片内容的。
-                    // 但由于每张图尺寸不同，直接 loadFromJSON 可能会导致位置错乱
-                    // 最优解：在 saveConfig 时，应该保存 "相对位置 (百分比)"，但那太复杂。
-                    // 实用解：如果图片尺寸差异不大（都是相机拍的），直接套用没问题。
-                    // 如果图片尺寸差异巨大，用户需要在UI里单独调整。
-                    
-                    // 我们这里为了保证导出时水印与图片的关系正确，
-                    // 我们需要将 JSON 对象缩放到导出尺寸
-                    // 编辑时的逻辑尺寸 = currentRawImg.width (适配后的)
-                    // 导出尺寸 = fw
-                    
-                    // 这里简化处理：直接加载。因为我们在 fitCanvasToScreen 时
-                    // 是将 canvas 设为了图片的真实尺寸！所以 JSON 里的坐标就是真实像素坐标。
-                    // 只要导出的图片也是真实尺寸（或者同比例缩放），坐标就是对的。
-                    
-                    // 唯一的问题是 HD 放大。如果 HD 放大了，水印也要放大。
-                    const hdScale = isHD ? scale : 1;
-                    
+                    // 4. 叠加水印 (使用 enlivenObjects 而不是 loadFromJSON，防止覆盖背景)
                     if (config.fabricJSON && config.fabricJSON.objects.length > 0) {
-                        vc.loadFromJSON(config.fabricJSON, () => {
-                            // 如果进行了 HD 放大，所有对象也要放大
-                            if (hdScale !== 1) {
-                                vc.getObjects().forEach(o => {
-                                    o.set({
-                                        left: o.left * hdScale,
-                                        top: o.top * hdScale,
-                                        scaleX: o.scaleX * hdScale,
-                                        scaleY: o.scaleY * hdScale
-                                    });
-                                    o.setCoords();
+                        // 计算 HD 带来的额外缩放
+                        const hdScale = isHD ? scale : 1;
+                        
+                        fabric.util.enlivenObjects(config.fabricJSON.objects, (objs) => {
+                            objs.forEach(o => {
+                                // 修正坐标和缩放
+                                o.set({
+                                    left: o.left * hdScale,
+                                    top: o.top * hdScale,
+                                    scaleX: o.scaleX * hdScale,
+                                    scaleY: o.scaleY * hdScale
                                 });
-                            }
+                                vc.add(o);
+                            });
                             vc.renderAll();
+                            // 导出高质量 JPG
                             const d = vc.toDataURL({format:'jpeg', quality:1});
                             fetch(d).then(r=>r.blob()).then(resolve);
                         });
@@ -591,50 +398,35 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- 6. 悬浮条 ---
+    // 悬浮条逻辑
     const floatBar = document.getElementById('float-bar');
     function updateFloatBar() {
         const o = canvas.getActiveObject();
         if (o && o.type === 'i-text') {
             floatBar.style.display = 'block';
             const b = o.getBoundingRect();
-            const z = canvas.getZoom();
-            // 计算屏幕坐标
-            // 简单定位：放在 canvas-box 容器内
-            // 需要更精细的计算，这里简单做
-            // 由于 canvas 是 transform 的，直接定位有难度。
-            // 简单方案：固定在画布上方或右侧，这里还是尝试跟随
             const barW = floatBar.offsetWidth || 200;
             let left = b.left + b.width/2 - barW/2;
             let top = b.top - 50;
-            
-            // 边界保护
             if(top<0) top = b.top + b.height + 10;
-            
             floatBar.style.left = left + 'px';
             floatBar.style.top = top + 'px';
-            
-            // 回显
             document.getElementById('tool-color').value = o.fill;
             document.getElementById('tool-font').value = o.fontFamily;
             if(o.backgroundColor) document.getElementById('tool-bg-color').value = o.backgroundColor;
-        } else {
-            floatBar.style.display = 'none';
-        }
+        } else { floatBar.style.display = 'none'; }
     }
     canvas.on('selection:created', updateFloatBar);
     canvas.on('selection:updated', updateFloatBar);
     canvas.on('selection:cleared', () => floatBar.style.display='none');
     canvas.on('object:moving', updateFloatBar);
     
-    // 工具栏事件
     document.getElementById('tool-bold').onclick = () => { const o=canvas.getActiveObject(); if(o){o.set('fontWeight',o.fontWeight==='bold'?'normal':'bold');canvas.renderAll();} };
     document.getElementById('tool-del').onclick = () => { const o=canvas.getActiveObjects(); if(o.length){canvas.discardActiveObject();canvas.remove(...o);canvas.renderAll();} };
     document.getElementById('tool-color').oninput = (e) => { const o=canvas.getActiveObject(); if(o){o.set('fill',e.target.value);canvas.renderAll();} };
     document.getElementById('tool-font').onchange = (e) => { const o=canvas.getActiveObject(); if(o){o.set('fontFamily',e.target.value);canvas.renderAll();} };
     document.getElementById('tool-bg-color').oninput = (e) => { const o=canvas.getActiveObject(); if(o){o.set('backgroundColor',e.target.value);canvas.renderAll();} };
     document.getElementById('tool-bg-clear').onclick = () => { const o=canvas.getActiveObject(); if(o){o.set('backgroundColor','');canvas.renderAll();} };
-
 });
 </script>
 </body>
