@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>水印编辑器 v21.0 (增加图片水印)</title>
+    <title>水印编辑器 v22.0 (一键应用到全部)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&family=Noto+Serif+SC:wght@700&family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
@@ -38,6 +38,10 @@
         .btn-primary { background: #007bff; color: white; border: none; }
         .btn-primary:hover:not(:disabled) { background: #0069d9; }
         
+        /* 应用到全部按钮特别样式 */
+        .btn-apply-all { background: #6610f2; color: white; border: none; font-weight: bold; margin-top: 15px; }
+        .btn-apply-all:hover:not(:disabled) { background: #520dc2; }
+
         .hd-switch { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 13px; color: #555; background: #f9f9f9; padding: 10px; border-radius: 6px; }
         .hd-tag { background: #ff2442; color: white; padding: 1px 4px; border-radius: 3px; font-size: 10px; margin-left: auto;}
 
@@ -49,8 +53,6 @@
         .icon-btn.active { background: #e3f2fd; color: #007bff; }
         .color-wrap { width: 25px; height: 25px; position: relative; border: 1px solid #ddd; border-radius: 3px; overflow: hidden; }
         .color-wrap input { position: absolute; top:-5px; left:-5px; width: 40px; height: 40px; cursor: pointer; }
-        
-        /* 针对图片水印隐藏文字工具 */
         .text-tools-only { display: flex; gap: 5px; align-items: center; }
     </style>
 </head>
@@ -71,7 +73,6 @@
         </div>
         <div id="float-bar" class="floating-tools">
             <div class="tool-row">
-                <!-- 这些工具只在选中文本时显示 -->
                 <div id="text-tools" class="text-tools-only">
                     <select id="tool-font" style="font-size:12px; width:80px;">
                         <option value="'Noto Sans SC', sans-serif">黑体</option>
@@ -85,7 +86,6 @@
                     <button class="icon-btn" id="tool-bg-clear" style="font-size:12px">🚫</button>
                     <div style="width:1px; height:20px; background:#ddd; margin:0 2px;"></div>
                 </div>
-                <!-- 删除按钮所有对象通用 -->
                 <button class="icon-btn" id="tool-del" style="color:red">×</button>
             </div>
         </div>
@@ -113,10 +113,13 @@
         </div>
         
         <div class="panel">
+            <div style="font-weight:bold; margin-bottom:8px; font-size:13px; color:#555;">内容添加</div>
             <button class="btn" id="btn-text">🅰️ 添加文本</button>
-            <!-- 🆕 新增：添加图片水印 -->
             <input type="file" id="wm-img-input" accept="image/*" style="display:none">
             <button class="btn" id="btn-wm-img">🖼️ 添加图片水印</button>
+
+            <!-- 🆕 新增：应用到全部按钮 -->
+            <button class="btn btn-apply-all" id="btn-apply-all">⚡ 将当前效果应用到全部</button>
         </div>
         
         <div style="margin-top:auto;">
@@ -140,10 +143,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const hdToggle = document.getElementById('hd-toggle');
     const btnText = document.getElementById('btn-text');
     const btnProcess = document.getElementById('btn-process');
-    
-    // 新增引用
     const wmImgInput = document.getElementById('wm-img-input');
     const btnWmImg = document.getElementById('btn-wm-img');
+    const btnApplyAll = document.getElementById('btn-apply-all'); // 新按钮
     
     let allFiles = []; 
     let imageConfigs = {}; 
@@ -171,7 +173,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // 保存状态
     function saveCurrentState() {
         if (currentIndex === -1) return;
-        // 保存所有对象（文本和图片水印）
         const json = canvas.toJSON(['id', 'selectable', 'name', 'backgroundColor']);
         delete json.backgroundImage; 
         imageConfigs[currentIndex] = {
@@ -202,7 +203,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     fillSelect.value = conf.fillMode;
                     canvas.clear();
                     if(conf.fabricJSON && conf.fabricJSON.objects) {
-                        // 使用 enlivenObjects 确保图片水印也能正确加载
                         canvas.loadFromJSON(conf.fabricJSON, canvas.renderAll.bind(canvas));
                     }
                 }
@@ -307,35 +307,61 @@ document.addEventListener('DOMContentLoaded', () => {
         canvas.add(t); canvas.setActiveObject(t);
     };
 
-    // 🆕 新增：添加图片水印逻辑
+    // 图片水印
     btnWmImg.onclick = () => wmImgInput.click();
-    
     wmImgInput.onchange = (e) => {
         const file = e.target.files[0];
         if(!file) return;
         const reader = new FileReader();
         reader.onload = (f) => {
             fabric.Image.fromURL(f.target.result, (img) => {
-                // 自动调整大小，不至于太大 (例如占画布宽度的30%)
                 const canvasW = canvas.width / canvas.getZoom();
                 const scale = (canvasW * 0.3) / img.width;
-                
                 img.set({
-                    left: canvasW / 2,
-                    top: canvas.height / 2 / canvas.getZoom(),
-                    originX: 'center',
-                    originY: 'center',
-                    scaleX: scale,
-                    scaleY: scale,
-                    cornerColor: '#007bff', 
-                    cornerStyle: 'circle'
+                    left: canvasW / 2, top: canvas.height / 2 / canvas.getZoom(),
+                    originX: 'center', originY: 'center',
+                    scaleX: scale, scaleY: scale,
+                    cornerColor: '#007bff', cornerStyle: 'circle'
                 });
-                canvas.add(img);
-                canvas.setActiveObject(img);
-                wmImgInput.value = ''; // 重置以便下次添加同一张
+                canvas.add(img); canvas.setActiveObject(img);
+                wmImgInput.value = ''; 
             });
         };
         reader.readAsDataURL(file);
+    };
+
+    // 🆕 核心功能：应用到全部
+    btnApplyAll.onclick = () => {
+        if (currentIndex === -1) return;
+        
+        // 1. 保存当前状态
+        saveCurrentState();
+        
+        // 2. 获取当前配置模板
+        const template = imageConfigs[currentIndex];
+        if (!template) return;
+        
+        // 3. 询问确认（可选，这里直接执行体验更好）
+        
+        // 4. 覆盖所有图片的配置
+        for (let i = 0; i < allFiles.length; i++) {
+            // 深拷贝配置，确保后续独立编辑互不影响
+            // JSON序列化是最简单的深拷贝方式
+            imageConfigs[i] = {
+                fabricJSON: JSON.parse(JSON.stringify(template.fabricJSON)),
+                is34: template.is34,
+                fillMode: template.fillMode
+            };
+        }
+        
+        // 5. 视觉反馈
+        const originalText = btnApplyAll.textContent;
+        btnApplyAll.textContent = "✅ 已应用到所有图片！";
+        btnApplyAll.disabled = true;
+        setTimeout(() => {
+            btnApplyAll.textContent = originalText;
+            btnApplyAll.disabled = false;
+        }, 1500);
     };
 
     function getSmartColor(img) {
@@ -442,26 +468,20 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 悬浮条逻辑 (优化：针对图片水印只显示删除)
     const floatBar = document.getElementById('float-bar');
     const textTools = document.getElementById('text-tools');
-    
     function updateFloatBar() {
         const o = canvas.getActiveObject();
         if (o) {
             floatBar.style.display = 'block';
-            
-            // 如果选中的是文字，显示文字工具；如果是图片，隐藏文字工具
             if (o.type === 'i-text') {
                 textTools.style.display = 'flex';
-                // 回显文字状态
                 document.getElementById('tool-color').value = o.fill;
                 document.getElementById('tool-font').value = o.fontFamily;
                 if(o.backgroundColor) document.getElementById('tool-bg-color').value = o.backgroundColor;
             } else {
                 textTools.style.display = 'none';
             }
-
             const b = o.getBoundingRect();
             const barW = floatBar.offsetWidth || 200;
             let left = b.left + b.width/2 - barW/2;
@@ -469,9 +489,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if(top<0) top = b.top + b.height + 10;
             floatBar.style.left = left + 'px';
             floatBar.style.top = top + 'px';
-        } else { 
-            floatBar.style.display = 'none'; 
-        }
+        } else { floatBar.style.display = 'none'; }
     }
     canvas.on('selection:created', updateFloatBar);
     canvas.on('selection:updated', updateFloatBar);
